@@ -1,0 +1,16 @@
+{
+  "appId": "io.github.sqwer2017.noctra",
+  "appName": "Noctra",
+  "webDir": "www",
+  "backgroundColor": "#121214",
+  "ios": {
+    "contentInset": "never",
+    "scheme": "Noctra",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

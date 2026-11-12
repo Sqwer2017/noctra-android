@@ -1,0 +1,11 @@
+Noctra Android
+
+This project is based on Muriel (https://github.com/cloverscripts/riff-muriel),
+which is based on Riff (https://github.com/rootscripts/riff).
+
+Original Riff code © rootscripts.
+Muriel code © cloverscripts.
+Noctra modifications © Noctra contributors.
+
+Both upstream projects are licensed under the MIT License. The original
+copyright notices are retained in LICENSE.

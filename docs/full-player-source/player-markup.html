@@ -1,0 +1,103 @@
+<!-- Источник: index.html. Это базовый DOM; #noctra-np-head, #np-profile-badge, #noctra-show-lyrics,
+     #np-tempo-panel и #np-thick-timeline создаются JS (см. player.js). -->
+
+<!-- ===== HTML · index.html:2021-2087 — #right-panel (шапка, обложка, мета, текст, очередь) ===== -->
+    <aside class="right-panel lyrics-empty hidden" id="right-panel">
+      <div class="drawer-tabs" role="tablist">
+        <button class="drawer-tab active" data-drawer-tab="now" role="tab">Now playing</button>
+        <button class="drawer-tab" data-drawer-tab="queue" role="tab">Queue</button>
+        <button class="btn-icon-pill" id="btn-close-right-panel" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="drawer-pane" id="drawer-now">
+      <div class="right-panel-header">
+        <div class="right-panel-header-actions">
+          <button class="lyrics-mode-btn" id="btn-lyrics-mode" title="Toggle line mode">
+            <span data-i18n>Word</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="right-panel-artwork-box" id="right-panel-artwork-box">
+        <div class="cover-container" id="cover-container">
+          <img src="" alt="" class="right-panel-cover" id="right-panel-cover">
+          <div class="right-panel-cover-fallback" id="right-panel-fallback">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+          </div>
+          <div class="vinyl-overlay hidden" id="vinyl-overlay"></div>
+          <button id="btn-right-panel-art" title="Change cover/banner for this track" aria-label="Change cover/banner for this track">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </button>
+        </div>
+        <div class="right-panel-meta">
+          <div class="right-panel-title-row" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0;">
+            <h3 class="right-panel-title" id="right-panel-title" style="flex: 1; min-width: 0;">No track playing</h3>
+          </div>
+          <span class="right-panel-artist" id="right-panel-artist">Select a track to listen</span>
+        </div>
+      </div>
+
+      <div class="lyrics-section">
+        <div class="lyrics-header">
+          <div class="lyrics-header-actions">
+            <button class="lyrics-action-btn" id="btn-add-custom-lyrics" title="Edit lyrics" aria-label="Edit lyrics">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              <span>Edit</span>
+            </button>
+            <button class="lyrics-action-btn" id="btn-sync-lyrics" title="Sync lyrics" aria-label="Sync lyrics">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Sync</span>
+            </button>
+            <button class="lyrics-action-btn hidden" id="btn-translate-lyrics" title="Translate lyrics" aria-label="Translate lyrics">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.11 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+            </button>
+            <button class="lyrics-action-btn" id="btn-tv-karaoke" title="Fullscreen karaoke" aria-label="Fullscreen karaoke">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="lyrics-container" id="lyrics-container"></div>
+      </div>
+      </div>
+      <div class="drawer-pane hidden" id="drawer-queue">
+        <div class="drawer-queue-head">
+          <span class="drawer-queue-title">Up next</span>
+          <button class="btn-outline-pill" id="btn-clear-queue">Clear</button>
+        </div>
+        <div class="tracks-list" id="queue-tracks-list">
+          <div class="empty-hint">Queue is empty. Play a track to start.</div>
+        </div>
+      </div>
+
+<!-- ===== HTML · index.html:2128-2157 — .playbar-center (транспорт; сюда JS добавляет Speed & Pitch и таймлайн) ===== -->
+    <div class="playbar-center">
+      <div class="playback-controls">
+        <button class="control-btn" id="btn-shuffle" title="Shuffle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+        </button>
+        <button class="control-btn" id="btn-prev" title="Previous">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5"></line></svg>
+        </button>
+        <div class="play-pause-wrapper">
+          <button class="btn-play-pause" id="btn-play-pause" title="Play or pause">
+            <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 19 12 8 19"></polygon></svg>
+            <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>
+            <svg id="playbar-spinner" class="hidden m3-circular-progress" viewBox="0 0 48 48" style="width: 24px; height: 24px; position: absolute; margin: auto; inset: 0;"><circle class="m3-spinner-track" cx="24" cy="24" r="18" fill="none" stroke-width="4"></circle><circle class="m3-spinner-head" cx="24" cy="24" r="18" fill="none" stroke-width="4"></circle></svg>
+          </button>
+        </div>
+        <button class="control-btn" id="btn-next" title="Next">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5"></line></svg>
+        </button>
+        <button class="control-btn" id="btn-repeat" title="Repeat" data-i18n-attr="title aria-label">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><polyline class="repeat-one-mark" points="10.5 10.5 12.5 9 12.5 15" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+        </button>
+      </div>
+
+      <div class="scrubber-bar-wrapper">
+        <span class="time-label" id="time-current">0:00</span>
+        <div class="scrubber-track-container" id="scrubber-track">
+        </div>
+        <span class="time-label" id="time-duration">0:00</span>
+      </div>
+    </div>

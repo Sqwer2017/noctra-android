@@ -1,0 +1,614 @@
+/*
+  NOCTRA — Android Now Playing visual polish
+  Add this file AFTER mobile.css.
+  Keeps the existing DOM, JavaScript, component order and theme system.
+  All accent colors are inherited from the active Noctra theme.
+*/
+
+/* ---------- Stable mobile viewport + sheet surface ---------- */
+html.is-mobile body.np-open {
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+html.is-mobile body.np-open #right-panel {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 100%;
+  min-height: 100dvh;
+  padding:
+    calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 10px)
+    clamp(14px, 4.6vw, 20px)
+    calc(var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 238px) !important;
+  gap: clamp(9px, 1.8vh, 14px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(
+      ellipse at 50% 34%,
+      color-mix(in srgb, var(--md-sys-color-primary) 13%, transparent) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--md-sys-color-primary) 13%, transparent) 0%,
+      transparent 42%
+    ),
+    var(--md-sys-color-surface-container-low-solid, #1a1b1e) !important;
+  scrollbar-width: none;
+}
+
+html.is-mobile body.np-open #right-panel::-webkit-scrollbar {
+  display: none;
+}
+
+html.is-mobile body.np-open #noctra-np-head {
+  min-height: 40px;
+  padding: 0 1px 2px;
+  gap: 12px;
+}
+
+html.is-mobile body.np-open #noctra-np-head .np-head-btn {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 13%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 7%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+html.is-mobile body.np-open #noctra-np-head .np-head-btn:active {
+  transform: scale(.94);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 17%, transparent);
+}
+
+html.is-mobile body.np-open #noctra-np-head .np-head-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: .105em;
+  font-weight: 700;
+}
+
+/* ---------- Artwork: same position, more depth and cleaner edges ---------- */
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-artwork-box {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: clamp(5px, 1.3vh, 11px) 0 0 !important;
+  gap: clamp(12px, 1.8vh, 16px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  isolation: isolate;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel #cover-container {
+  position: relative;
+  flex: 0 0 auto !important;
+  width: min(82vw, 306px, 34vh) !important;
+  height: min(82vw, 306px, 34vh) !important;
+  aspect-ratio: 1 / 1;
+  overflow: hidden !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 42%, transparent) !important;
+  border-radius: clamp(21px, 6vw, 27px) !important;
+  background: var(--md-sys-color-surface-container-high, #292a30);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, .34),
+    0 5px 14px rgba(0, 0, 0, .2),
+    0 0 0 5px color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent),
+    0 0 34px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent) !important;
+  transform: translateZ(0);
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-cover,
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-cover-fallback {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  object-fit: cover;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-cover {
+  display: block;
+  image-rendering: auto;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel #np-profile-badge {
+  top: 10px !important;
+  right: 10px !important;
+  max-width: calc(100% - 20px);
+  min-height: 23px;
+  padding: 5px 9px;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest-solid, #292a30) 88%, transparent);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255,255,255,.07);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 10px;
+  letter-spacing: .01em;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel #btn-right-panel-art {
+  left: 10px;
+  bottom: 10px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(12, 12, 16, .42);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 3px 12px rgba(0,0,0,.2);
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-meta {
+  width: 100% !important;
+  min-width: 0;
+  gap: 5px;
+  padding: 0 8px;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-title-row {
+  width: 100%;
+  min-width: 0;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(15px, 4vw, 17px) !important;
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-artist {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---------- Lyrics button and lyrics actions ---------- */
+html.is-mobile body.np-open:not(.np-lyrics-mode) #noctra-show-lyrics {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 42px;
+  height: 42px;
+  margin-top: 1px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent);
+  color: var(--md-sys-color-on-surface);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+html.is-mobile body.np-open #noctra-show-lyrics:active {
+  transform: scale(.985);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 13%, transparent);
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 48%, transparent);
+}
+
+html.is-mobile body.np-open.np-lyrics-mode #right-panel .cover-container {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 14px !important;
+}
+
+html.is-mobile body.np-open.np-lyrics-mode #right-panel .lyrics-section {
+  min-width: 0;
+  overflow: hidden;
+}
+
+html.is-mobile body.np-open.np-lyrics-mode #right-panel .lyrics-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+html.is-mobile body.np-open.np-lyrics-mode #right-panel .lyrics-action-btn {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent);
+  color: var(--md-sys-color-on-surface);
+  font-size: 11px;
+}
+
+/* ---------- Speed & Pitch: retain the same card and controls ---------- */
+html.is-mobile body.np-open #np-tempo-panel {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  gap: 7px;
+  padding: 10px 11px 9px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+  border-radius: 17px;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent),
+      transparent 58%),
+    color-mix(in srgb, var(--md-sys-color-surface-container-highest-solid, #292a30) 84%, transparent);
+  box-shadow:
+    0 8px 22px rgba(0,0,0,.13),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-head {
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .015em;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-head span:last-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(3px, 1vw, 5px);
+  min-width: 0;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets button {
+  min-width: 0;
+  width: 100%;
+  height: 29px;
+  padding: 0 2px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 7%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 6%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: clamp(9px, 2.6vw, 11px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets button:active,
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-step:active {
+  transform: scale(.95);
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets button.active {
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 19%, transparent);
+  color: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-ruler-row {
+  min-width: 0;
+  gap: 7px;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-step {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 7%, transparent);
+  color: var(--md-sys-color-on-surface);
+  font-size: 18px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-scale {
+  min-width: 0;
+  height: 34px;
+  overflow: visible;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-ticks {
+  left: 4px;
+  right: 4px;
+  top: 8px;
+  bottom: 7px;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-ticks i {
+  width: 1px;
+  border-radius: 2px;
+  opacity: .42;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-ticks i:nth-child(5n+1) {
+  opacity: .75;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-pointer {
+  top: 1px;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-foot {
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-foot span {
+  min-width: 0;
+}
+
+html.is-mobile body.np-open #np-tempo-panel .np-tempo-foot span:last-child {
+  text-align: right;
+}
+
+/* ---------- Timeline: one clear, full-width seek control ---------- */
+html.is-mobile body.np-open #np-thick-timeline {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  padding: 0 1px;
+  align-items: center;
+}
+
+html.is-mobile body.np-open #np-thick-timeline .npt-time {
+  flex: 0 0 34px;
+  min-width: 34px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 10px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+
+html.is-mobile body.np-open #np-thick-timeline input[type="range"] {
+  min-width: 0 !important;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+html.is-mobile body.np-open #np-thick-timeline input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px !important;
+  border-radius: 99px !important;
+}
+
+html.is-mobile body.np-open #np-thick-timeline input[type="range"]::-webkit-slider-thumb {
+  width: 17px !important;
+  height: 17px !important;
+  margin-top: -5.5px !important;
+  border: 2px solid var(--md-sys-color-primary) !important;
+  background: var(--md-sys-color-surface-container-highest-solid, #292a30) !important;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent),
+    0 1px 7px rgba(0,0,0,.25) !important;
+}
+
+/* ---------- Transport controls: no clipping, consistent hit areas ---------- */
+html.is-mobile body.np-open .playbar {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  padding:
+    9px clamp(16px, 5vw, 22px)
+    calc(var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 13px) !important;
+  overflow: visible !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--md-sys-color-surface-container-low-solid, #1a1b1e) 0%, transparent) 0%,
+      color-mix(in srgb, var(--md-sys-color-surface-container-low-solid, #1a1b1e) 82%, transparent) 20%,
+      var(--md-sys-color-surface-container-low-solid, #1a1b1e) 100%
+    ) !important;
+}
+
+html.is-mobile body.np-open .playbar-center {
+  min-width: 0 !important;
+  gap: 9px !important;
+}
+
+html.is-mobile body.np-open .playbar-center .playback-controls {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 58px;
+  width: 100% !important;
+  padding: 0 2px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: clamp(4px, 2vw, 12px);
+}
+
+html.is-mobile body.np-open .playbar-center .control-btn {
+  width: clamp(38px, 11vw, 44px);
+  height: 44px;
+  min-width: 38px;
+  flex: 0 1 44px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+  background: transparent;
+  border: 1px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .16s ease, background .16s ease, transform .16s ease;
+}
+
+html.is-mobile body.np-open .playbar-center .control-btn:active {
+  transform: scale(.91);
+  color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+html.is-mobile body.np-open .playbar-center .control-btn svg {
+  display: block;
+  flex: 0 0 auto;
+  max-width: 22px;
+  max-height: 22px;
+}
+
+html.is-mobile body.np-open .playbar-center .play-pause-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.is-mobile body.np-open .playbar-center .btn-play-pause {
+  width: 62px !important;
+  height: 62px !important;
+  min-width: 62px;
+  min-height: 62px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
+  border-radius: 50%;
+  color: var(--md-sys-color-on-primary, #fff);
+  background: var(--md-sys-color-primary);
+  box-shadow:
+    0 7px 20px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.2);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+html.is-mobile body.np-open .playbar-center .btn-play-pause:active {
+  transform: scale(.94);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent);
+}
+
+html.is-mobile body.np-open .playbar-center .btn-play-pause svg {
+  flex: 0 0 auto;
+}
+
+/* ---------- General touch and narrow-device corrections ---------- */
+html.is-mobile body.np-open button {
+  touch-action: manipulation;
+}
+
+html.is-mobile body.np-open #right-panel *,
+html.is-mobile body.np-open .playbar * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 360px) {
+  html.is-mobile body.np-open #right-panel {
+    padding-left: 13px !important;
+    padding-right: 13px !important;
+  }
+
+  html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel #cover-container {
+    width: min(80vw, 280px, 32vh) !important;
+    height: min(80vw, 280px, 32vh) !important;
+  }
+
+  html.is-mobile body.np-open #np-tempo-panel {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets {
+    gap: 3px;
+  }
+
+  html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets button {
+    font-size: 9px;
+  }
+
+  html.is-mobile body.np-open .playbar {
+    padding-left: 13px !important;
+    padding-right: 13px !important;
+  }
+
+  html.is-mobile body.np-open .playbar-center .playback-controls {
+    gap: 2px;
+  }
+}
+
+@media (max-height: 740px) {
+  html.is-mobile body.np-open #right-panel {
+    gap: 7px !important;
+  }
+
+  html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel #cover-container {
+    width: min(76vw, 286px, 31vh) !important;
+    height: min(76vw, 286px, 31vh) !important;
+  }
+
+  html.is-mobile body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-artwork-box {
+    gap: 9px !important;
+  }
+
+  html.is-mobile body.np-open #np-tempo-panel {
+    gap: 5px;
+    padding-top: 8px;
+    padding-bottom: 7px;
+  }
+
+  html.is-mobile body.np-open #np-tempo-panel .np-tempo-presets button {
+    height: 26px;
+  }
+
+  html.is-mobile body.np-open .playbar-center .playback-controls {
+    min-height: 53px;
+  }
+
+  html.is-mobile body.np-open .playbar-center .btn-play-pause {
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px;
+    min-height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-mobile body.np-open #right-panel *,
+  html.is-mobile body.np-open .playbar * {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,173 @@
+/*
+  Noctra — compatibility layer for the new Now Playing polish.
+  The polish file is loaded after mobile.css, but a few legacy player rules in
+  mobile.css still use !important and would win on specificity. This file
+  re-applies only those values from now-playing-polish.css so the new design
+  behaves as written. Loaded strictly after now-playing-polish.css.
+*/
+
+/* Legacy glow pseudo-elements are replaced by the radial background in the new file. */
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty)::after,
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel .right-panel-artwork-box::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Let the new sheet own its scrolling and clipping. */
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Cover: size, border, radius and shadow from now-playing-polish.css. */
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) #cover-container {
+  width: min(82vw, 306px, 34vh) !important;
+  height: min(82vw, 306px, 34vh) !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 42%, transparent) !important;
+  border-radius: clamp(21px, 6vw, 27px) !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, .34),
+    0 5px 14px rgba(0, 0, 0, .2),
+    0 0 0 5px color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent),
+    0 0 34px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent) !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) .right-panel-cover,
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) .right-panel-cover-fallback {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  object-fit: cover;
+}
+
+@media (max-width: 360px) {
+  html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) #cover-container {
+    width: min(80vw, 280px, 32vh) !important;
+    height: min(80vw, 280px, 32vh) !important;
+  }
+}
+
+@media (max-height: 740px) {
+  html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) #cover-container {
+    width: min(76vw, 286px, 31vh) !important;
+    height: min(76vw, 286px, 31vh) !important;
+  }
+}
+
+/* Keep the artwork section's layout independent of playback state: the legacy
+   meta block had flex:1 and grew when a real track / like button appeared,
+   which pushed the cover up and the lyrics button under the tempo card. */
+html.is-mobile:not(#np-css-bridge) body.np-open:not(.np-lyrics-mode) #right-panel:not(.lyrics-empty) .right-panel-meta {
+  flex: 0 0 auto !important;
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  overflow: hidden !important;
+}
+
+/* Transparent player header buttons, matching the floating search block. */
+html.is-mobile:not(#np-css-bridge) body.np-open #noctra-np-head,
+html.is-mobile:not(#np-css-bridge) body.np-open #noctra-np-head .np-head-btn {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Lyrics mode: keep the new sheet surface, the same soft cover treatment and the
+   new button language. The cover stays at its current 56px size and position. */
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel {
+  background:
+    radial-gradient(
+      ellipse at 50% 34%,
+      color-mix(in srgb, var(--md-sys-color-primary) 13%, transparent) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--md-sys-color-primary) 13%, transparent) 0%,
+      transparent 42%
+    ),
+    var(--md-sys-color-surface-container-low-solid, #1a1b1e) !important;
+  overflow: hidden !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel .right-panel-artwork-box {
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  padding-top: 6px !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel #cover-container {
+  width: 56px !important;
+  height: 56px !important;
+  flex: 0 0 56px !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent) !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .35) !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel .right-panel-meta {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #noctra-show-lyrics {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 124px !important;
+  padding: 0 16px !important;
+  border-radius: 20px !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel .lyrics-header-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel .lyrics-action-btn {
+  width: auto !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  padding: 0 10px !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent) !important;
+  border-radius: 11px !important;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  box-shadow: none !important;
+}
+html.is-mobile:not(#np-css-bridge) body.np-open.np-lyrics-mode #right-panel .lyrics-action-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Transport button: the polish uses a solid accent circle, not the legacy gradient. */
+html.is-mobile:not(#np-css-bridge) body.np-open .playbar-center .btn-play-pause {
+  width: 62px !important;
+  height: 62px !important;
+  min-width: 62px !important;
+  max-width: 62px !important;
+  min-height: 62px !important;
+  max-height: 62px !important;
+  flex: 0 0 62px !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent) !important;
+  color: var(--md-sys-color-on-primary, #fff) !important;
+  background: var(--md-sys-color-primary) !important;
+  box-shadow:
+    0 7px 20px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .2) !important;
+}
+
+@media (max-height: 740px) {
+  html.is-mobile:not(#np-css-bridge) body.np-open .playbar-center .btn-play-pause {
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    flex-basis: 56px !important;
+  }
+}

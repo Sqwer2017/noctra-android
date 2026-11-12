@@ -1,0 +1,74 @@
+<div id="np-edit-sheet" class="open"><div class="npe-backdrop"></div><div class="npe-card">
+      <div class="npe-grabber"></div>
+      <div class="npe-top">
+        <div>
+          <span class="npe-kicker">NOCTRA · CUSTOMIZATION</span>
+          <h3 data-no-i18n="">Редактировать профиль</h3>
+        </div>
+        <button type="button" class="npe-close" id="npe-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="npe-preview">
+        <div class="npe-prev-banner" id="npe-prev-banner">
+          <div class="np-profile-fx npe-prev-fx" id="npe-prev-fx"></div>
+          <div class="npe-prev-vignette"></div>
+        </div>
+        <div class="npe-prev-row">
+          <div class="npe-prev-avatar-wrap">
+            <div class="npe-prev-avatar" id="npe-prev-avatar" style="">M</div>
+            <button type="button" class="npe-avatar-edit" id="npe-avatar-pick" aria-label="Изменить аватар">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+            </button>
+            <button type="button" class="npe-avatar-clear" id="npe-avatar-clear" aria-label="Удалить аватар" hidden="">×</button>
+          </div>
+          <div class="npe-prev-copy">
+            <div class="npe-prev-head">
+              <b id="npe-prev-name">Me</b>
+              <span class="npe-prev-badge" id="npe-prev-level">LVL 1 · 52 XP</span>
+            </div>
+            <p id="npe-prev-bio">Пара слов о себе</p>
+          </div>
+        </div>
+      </div>
+      <div class="npe-section">
+        <div class="npe-label-row">
+          <span class="npe-label">Баннер профиля</span>
+          <span class="npe-hint">16:9 · PNG, JPG, WEBP</span>
+        </div>
+        <div class="npe-banner-row">
+          <div class="npe-thumb empty" id="npe-thumb">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="5" width="18" height="14" rx="3"></rect>
+              <circle cx="8.5" cy="10" r="1.5"></circle>
+              <path d="M21 16l-5-5-6 6-3-3-4 4"></path>
+            </svg>
+            <span>Нет фона</span>
+          </div>
+          <div class="npe-banner-actions">
+            <button type="button" class="npe-primary" id="npe-pick">Выбрать изображение</button>
+            <button type="button" class="npe-ghost" id="npe-clear">Удалить фон</button>
+          </div>
+        </div>
+      </div>
+      <div class="npe-section">
+        <div class="npe-label-row">
+          <span class="npe-label">О себе</span>
+          <span class="npe-count" id="npe-count">0/180</span>
+        </div>
+        <textarea id="npe-bio" rows="3" maxlength="180" placeholder="Пара слов о себе..."></textarea>
+      </div>
+      <div class="npe-section">
+        <div class="npe-label-row">
+          <span class="npe-label">Атмосферный эффект</span>
+        </div>
+        <div class="npe-fx-grid" id="npe-effects"><button type="button" class="npe-effect active" data-fx="none"><div class="npe-fx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><line x1="6" y1="6" x2="18" y2="18"></line></svg></div><span>Нет</span></button><button type="button" class="npe-effect" data-fx="embers"><div class="npe-fx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg></div><span>Угли</span></button><button type="button" class="npe-effect" data-fx="fog"><div class="npe-fx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M6 13h14M9 17h10"></path></svg></div><span>Туман</span></button><button type="button" class="npe-effect" data-fx="aurora"><div class="npe-fx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18c4-9 6-12 9-12s5 3 9 12"></path><path d="M6 18c2.5-5 4-7 6-7s3.5 2 6 7"></path></svg></div><span>Аврора</span></button><button type="button" class="npe-effect" data-fx="stars"><div class="npe-fx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.3 5.2 5.7.7-4.2 3.9 1.1 5.6L12 15.6l-4.9 2.8 1.1-5.6L4 8.9l5.7-.7z"></path></svg></div><span>Звёзды</span></button></div>
+      </div>
+      <div class="npe-actions">
+        <button type="button" class="npe-cancel" id="npe-cancel">Отмена</button>
+        <button type="button" class="npe-save" id="npe-save">Сохранить изменения</button>
+      </div>
+    </div></div>

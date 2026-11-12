@@ -1,0 +1,97 @@
+name: Android build
+
+# Builds Noctra.apk. Signed when the NOCTRA_* keystore secrets exist; otherwise a
+# debug APK for testing. The rolling "android-latest" release is updated on main.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', 'NOTICE', 'LEGAL.md', 'site/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build the web bundle
+        run: node mobile/build.mjs
+
+      - name: Sync into the Android project
+        run: npx cap sync android
+
+      - name: Build APK
+        env:
+          NOCTRA_KEYSTORE_B64: ${{ secrets.NOCTRA_KEYSTORE_B64 }}
+          NOCTRA_KEYSTORE_PASSWORD: ${{ secrets.NOCTRA_KEYSTORE_PASSWORD }}
+          NOCTRA_KEY_PASSWORD: ${{ secrets.NOCTRA_KEY_PASSWORD }}
+          NOCTRA_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -e
+          export NOCTRA_VERSION_NAME="$(node -p "require('./package.json').version")"
+          if [ -n "$NOCTRA_KEYSTORE_B64" ]; then
+            echo "$NOCTRA_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/noctra-release.p12"
+            export NOCTRA_KEYSTORE="$RUNNER_TEMP/noctra-release.p12"
+            export NOCTRA_KEY_ALIAS="noctra"
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk ../Noctra.apk
+            echo "APK=Noctra.apk" >> "$GITHUB_ENV"
+          else
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk ../Noctra-debug.apk
+            echo "APK=Noctra-debug.apk" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Noctra-apk
+          path: |
+            Noctra.apk
+            Noctra-debug.apk
+          if-no-files-found: error
+
+      - name: Publish to android-latest
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          head="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$head" != "$GITHUB_SHA" ]; then echo "main is at ${head::7} now; not publishing ${GITHUB_SHA::7}"; exit 0; fi
+          ver="$(node -p "require('./package.json').version")"
+          file="$(test -f Noctra.apk && echo Noctra.apk || echo Noctra-debug.apk)"
+          gh release delete android-latest --cleanup-tag --yes 2>/dev/null || true
+          gh release create android-latest "$file" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Noctra for Android (latest build)" \
+            --notes "Noctra $ver. Build of ${GITHUB_SHA::7} (run ${{ github.run_number }}). Download the APK on your phone and open it to install. Allow installs from your browser/files app if Android asks."
