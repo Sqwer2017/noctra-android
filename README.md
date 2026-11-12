@@ -51,6 +51,31 @@ and effect are restored.
 - Side navigation, light/dark themes, configurable waves and PC-style sliders.
 - Android 7+ (`minSdk 24`), target SDK 36.
 
+## Recent fixes
+
+- **Accidental touches.** The Speed & Pitch slider, the thick timeline and the
+  full-screen lyrics sliders now move only on a deliberate horizontal drag: a
+  vertical swipe or a tap leaves the value alone.
+- **Full-screen player gestures.** Swipe down or up on the cover or the header
+  to close it; a horizontal swipe there still changes tracks. A cancelled
+  gesture no longer leaves the sheet shifted or stuck, and the sheet is reset
+  when it closes, so reopening always starts on the cover instead of the
+  lyrics mode.
+- **The player is alone on screen.** The Home content and the background fade
+  out while the full player is open and fade back in when it closes. The
+  transport dock (Speed & Pitch, timeline, buttons) rises together with the
+  sheet instead of appearing in place.
+- **Closing animation.** It now has the same pace as opening; the mini player
+  waits a moment, then slides up from the bottom edge.
+- **Interface size on phones.** The UI scale slider used to do nothing: the
+  mobile bridge makes `setZoomFactor` a no-op. It now scales the page, and at
+  100% no zoom is applied at all.
+- **Layout.** The side navigation is wider. The content reaches the bottom edge
+  under the floating mini player, and the bottom padding no longer loses to a
+  higher-specificity rule, so the last row stays clear of the bar.
+- **Seeking.** Dragging the thick timeline is throttled, so a stream is not
+  reopened on every pixel; the final position is always committed.
+
 ## Install
 
 1. Download the APK above on the phone.

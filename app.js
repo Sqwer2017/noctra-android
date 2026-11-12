@@ -349,11 +349,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   function applyScale(scalePercent) {
     const factor = (scalePercent / 100) * 0.90;
     document.documentElement.style.setProperty('--app-scale', factor.toString());
-    if (window.electronAPI && window.electronAPI.setZoomFactor) {
-      window.electronAPI.setZoomFactor(factor);
-    } else {
-      document.body.style.zoom = factor;
+
+    /*
+     * Desktop Electron zooms its window. On phones electronAPI is a stub —
+     * mobile/electron-api.js sets setZoomFactor to a no-op and isMobile to true —
+     * so the UI scale slider changed nothing there. Scale the page ourselves.
+     *
+     * At 100% the zoom property is removed entirely: a normal launch must stay
+     * exactly as it was, without a zoomed coordinate system on the whole body.
+     */
+    const api = window.electronAPI;
+    if (api && !api.isMobile && api.setZoomFactor) {
+      api.setZoomFactor(factor);
+      return;
     }
+
+    const webFactor = scalePercent / 100;
+    document.body.style.zoom = Math.abs(webFactor - 1) < 0.005 ? '' : String(webFactor);
   }
 
   window.addEventListener('scroll', () => {

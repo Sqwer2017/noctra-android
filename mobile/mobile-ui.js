@@ -128,31 +128,165 @@
     openSheet();
   });
 
-  // swipe down on the sheet's top area to close it
-  let startY = null;
-  panel.addEventListener('touchstart', (e) => {
-    const t = e.touches[0];
-    const lyrics = document.getElementById('lyrics-container');
-    // a finger on a seek bar or slider is seeking, not closing the sheet (#21)
-    if (e.target.closest('input[type="range"], .scrubber-track-container, [role="slider"]')) { startY = null; return; }
-    startY = (lyrics && lyrics.contains(e.target) && lyrics.scrollTop > 0) ? null : t.clientY;
-  }, { passive: true });
-  // one transform write per frame, and no CSS transition while the finger drags (it lagged behind)
-  let dragY = 0, dragRaf = 0;
-  panel.addEventListener('touchmove', (e) => {
-    if (startY === null) return;
-    dragY = Math.max(0, e.touches[0].clientY - startY);
-    if (dragY > 0 && !panel.classList.contains('is-dragging')) panel.classList.add('is-dragging');
-    if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; if (startY !== null) panel.style.transform = dragY > 0 ? `translateY(${dragY}px)` : ''; });
-  }, { passive: true });
-  panel.addEventListener('touchend', (e) => {
-    if (startY === null) return;
-    const dy = e.changedTouches[0].clientY - startY;
+  /*
+   * Swipe the sheet away.
+   *
+   * Only a VERTICAL gesture that starts on a non-interactive part counts:
+   * horizontal movement belongs to the cover, and fingers on buttons, sliders
+   * and the scrolling lyrics keep their behaviour. `touchcancel` resets the
+   * same state as `touchend`, so a cancelled gesture can no longer leave the
+   * panel translated and stuck.
+   */
+  const SHEET_INTERACTIVE = 'button, a, input, textarea, select, [role="slider"], .scrubber-track-container, .scrubber-bar-wrapper, .np-head-btn, .right-panel-header-actions, .lyrics-header-actions';
+  let startX = null, startY = null, axis = null, offset = 0, allowUp = false, dragRaf = 0;
+
+  function resetDrag() {
     if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = 0; }
+    startX = startY = null;
+    axis = null;
+    offset = 0;
     panel.classList.remove('is-dragging');
     panel.style.transform = '';
-    startY = null;
-    if (dy > 110) closeSheet();
+  }
+
+  panel.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) { resetDrag(); return; }
+    const t = e.touches[0];
+    if (e.target.closest(SHEET_INTERACTIVE)) return;
+    const lyrics = document.getElementById('lyrics-container');
+    const inLyrics = !!(lyrics && lyrics.contains(e.target));
+    if (inLyrics && lyrics.scrollTop > 0) return;
+    startX = t.clientX;
+    startY = t.clientY;
+    axis = null;
+    allowUp = !inLyrics;
+  }, { passive: true });
+
+  // one transform write per frame, and no CSS transition while the finger drags (it lagged behind)
+  panel.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (axis === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      // horizontal: the cover gesture takes over, the sheet stays put
+      if (axis === 'x') { startY = null; return; }
+    }
+    if (axis !== 'y') return;
+
+    offset = dy;
+    if (!panel.classList.contains('is-dragging')) panel.classList.add('is-dragging');
+    if (!dragRaf) {
+      dragRaf = requestAnimationFrame(() => {
+        dragRaf = 0;
+        if (startY === null) return;
+        // down follows the finger; up is damped so the sheet is not yanked out
+        const shift = offset < 0 ? (allowUp ? offset * 0.35 : 0) : offset;
+        panel.style.transform = shift ? `translateY(${shift}px)` : '';
+      });
+    }
+  }, { passive: true });
+
+  function endDrag(cancelled) {
+    if (startY === null) { resetDrag(); return; }
+    const dy = offset;
+    const dragged = axis === 'y' && panel.classList.contains('is-dragging');
+    const close = !cancelled && dragged && (dy > 110 || (allowUp && dy < -110));
+    resetDrag();
+    if (close) closeSheet();
+  }
+
+  panel.addEventListener('touchend', () => endDrag(false));
+  // a cancelled gesture (system, second finger, sheet closing) must reset the state
+  panel.addEventListener('touchcancel', () => endDrag(true));
+
+  /*
+   * The mini player rises from the bottom edge once the sheet has finished
+   * sliding down, with a 0.2 s pause so the Home screen settles first.
+   *
+   * The trigger is the panel's own close transition, not the drawer state:
+   * a second observer on that state during startup stalled the whole page.
+   */
+  const MINI_ENTER_DELAY_MS = 200;
+
+  function playMiniEnter() {
+    if (!document.documentElement.classList.contains('is-mobile')) return;
+    playbar.classList.remove('np-mini-enter');
+    requestAnimationFrame(() => {
+      playbar.classList.add('np-mini-enter');
+      setTimeout(() => playbar.classList.remove('np-mini-enter'), 620);
+    });
+  }
+
+  /*
+   * While the sheet slides down and during the pause after it, the bar must not
+   * peek through/over it: `np-closing` keeps the mini player hidden.
+   */
+  let closingTimer = 0;   // safety, in case transitionend never fires
+  let miniEnterTimer = 0; // the extra pause before the bar rises
+
+  function clearClosingState() {
+    if (closingTimer) { clearTimeout(closingTimer); closingTimer = 0; }
+    document.body.classList.remove('np-closing');
+  }
+
+  function cancelMiniEnter() {
+    if (miniEnterTimer) { clearTimeout(miniEnterTimer); miniEnterTimer = 0; }
+  }
+
+  /*
+   * Opening: the transport dock (Speed & pitch, the timeline and the buttons)
+   * rises together with the sheet instead of appearing on its place while the
+   * cover is still sliding up. The class plays a one-shot keyframe, so it is
+   * removed right after the open transition.
+   */
+  let openingTimer = 0;
+
+  function startDockRise() {
+    clearDockRise();
+    void playbar.offsetWidth;
+    document.body.classList.add('np-opening');
+    openingTimer = setTimeout(clearDockRise, 560);
+  }
+
+  function clearDockRise() {
+    if (openingTimer) { clearTimeout(openingTimer); openingTimer = 0; }
+    document.body.classList.remove('np-opening');
+  }
+
+  panel.addEventListener('transitionstart', (e) => {
+    if (e.target !== panel || e.propertyName !== 'transform') return;
+    if (!panel.classList.contains('hidden')) {
+      // opened: drop any pending rise and bring the dock up with the sheet
+      cancelMiniEnter();
+      clearClosingState();
+      startDockRise();
+      return;
+    }
+    // closing: the dock goes away before the sheet starts moving down
+    clearDockRise();
+    document.body.classList.add('np-closing');
+    clearTimeout(closingTimer);
+    // covers the close transition plus the 0.2 s pause
+    closingTimer = setTimeout(clearClosingState, 1200);
+  });
+
+  panel.addEventListener('transitionend', (e) => {
+    if (e.target !== panel || e.propertyName !== 'transform') return;
+    if (!panel.classList.contains('hidden')) { clearDockRise(); return; }
+    // a cancelled drag may have left an inline transform; the sheet is closed now
+    resetDrag();
+    if (closingTimer) { clearTimeout(closingTimer); closingTimer = 0; }
+    // keep the bar hidden for another 0.2 s, then let it rise in
+    cancelMiniEnter();
+    miniEnterTimer = setTimeout(() => {
+      miniEnterTimer = 0;
+      clearClosingState();
+      playMiniEnter();
+    }, MINI_ENTER_DELAY_MS);
   });
 
   // Picked images and videos (background, banner, song covers) are saved as file URLs, and those change when
@@ -2161,13 +2295,21 @@
     label();
   }
   new MutationObserver(() => {
+    /*
+     * Reset the flag on CLOSE first: `sync` clears body.np-open before this
+     * observer runs, so the old `!np-open` early return skipped the reset and
+     * a reopened sheet stayed in lyrics mode instead of starting on the cover.
+     */
+    if (panel.classList.contains('hidden')) {
+      panel._noctraOpened = false;
+      return;
+    }
     if (!document.body.classList.contains('np-open')) return;
     // a new opening always starts on the cover; a later lyrics toggle is kept while open
-    if (!panel.classList.contains('hidden') && !panel._noctraOpened) {
+    if (!panel._noctraOpened) {
       panel._noctraOpened = true;
       resetMode();
     }
-    if (panel.classList.contains('hidden')) panel._noctraOpened = false;
   }).observe(panel, { attributes: true, attributeFilter: ['class'] });
   const buildStart = () => { build(); resetMode(); };
   if (document.readyState === 'complete' || document.readyState === 'interactive') buildStart();
@@ -2716,6 +2858,26 @@
   const fmt = (s) => { s = Math.max(0, Math.round(Number(s) || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const core = () => window.MurielCore;
   let seeking = false;
+  let lastSeekAt = 0;
+  let lastSeekValue = NaN;
+  /*
+   * Dragging fires `input` on every pixel. Seeking on each one floods the
+   * engine (a stream has to reopen every time), so commit at most ~11 times a
+   * second and always commit the final position on release.
+   */
+  function seekTo(value, force) {
+    const c = core(); const a = c && c.audio;
+    const d = a && Number.isFinite(a.duration) ? a.duration : 0;
+    if (!d || !c || typeof c.seek !== 'function') return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    if (!force && v === lastSeekValue) return;
+    const now = performance.now();
+    if (!force && now - lastSeekAt < 90) return;
+    lastSeekAt = now;
+    lastSeekValue = v;
+    c.seek((v / 1000) * d);
+  }
   function sync() {
     const c = core(); const a = c && c.audio;
     if (!a || seeking) return;
@@ -2726,17 +2888,16 @@
     curEl.textContent = fmt(a.currentTime);
     durEl.textContent = fmt(d);
   }
-  range.addEventListener('pointerdown', () => { seeking = true; });
+  range.addEventListener('pointerdown', () => { seeking = true; lastSeekValue = NaN; });
   range.addEventListener('input', () => {
-    const c = core(); const a = c && c.audio;
+    const a = core() && core().audio;
     const d = a && Number.isFinite(a.duration) ? a.duration : 0;
-    if (!d || !c || typeof c.seek !== 'function') return;
     range.style.setProperty('--p', (Number(range.value) / 10).toFixed(2) + '%');
-    curEl.textContent = fmt((Number(range.value) / 1000) * d);
-    c.seek((Number(range.value) / 1000) * d);
+    if (d) curEl.textContent = fmt((Number(range.value) / 1000) * d);
+    seekTo(range.value, false);
   });
-  range.addEventListener('change', () => { seeking = false; sync(); });
-  range.addEventListener('pointerup', () => { seeking = false; sync(); });
+  range.addEventListener('change', () => { seeking = false; seekTo(range.value, true); sync(); });
+  range.addEventListener('pointerup', () => { seeking = false; seekTo(range.value, true); sync(); });
   const a = (core() && core().audio) || document.querySelector('audio');
   if (a) ['timeupdate','seeked','loadedmetadata','durationchange','play'].forEach((ev) => a.addEventListener(ev, sync));
   setInterval(sync, 700);
@@ -3450,4 +3611,88 @@
   if (document.readyState === 'complete' || document.readyState === 'interactive') start();
   else document.addEventListener('DOMContentLoaded', start, { once: true });
   window.addEventListener('muriel:ready', start, { once: true });
+})();
+
+/* Noctra: a slider under the finger only moves on a deliberate horizontal drag.
+   Native range inputs jump to the touch point on touchstart, so a swipe that
+   merely started on the Speed slider or the thick timeline changed playback
+   speed or seeked the song. Here the native jump is suppressed: the value
+   follows the finger only while the gesture is horizontal, and a vertical swipe
+   or a plain tap leaves it exactly where it was. */
+(() => {
+  if (!document.documentElement.classList.contains('is-mobile')) return;
+
+  const SLOPE = 6;
+  const THUMB = 10;
+  const SELECTOR = '#right-panel input[type="range"], #np-tempo-panel input[type="range"], #np-thick-timeline input[type="range"], #tv-karaoke input[type="range"]';
+
+  function valueAt(input, clientX) {
+    const rect = input.getBoundingClientRect();
+    const min = parseFloat(input.min) || 0;
+    const max = parseFloat(input.max) || 100;
+    const step = parseFloat(input.step) || 1;
+    const usable = Math.max(1, rect.width - THUMB * 2);
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left - THUMB) / usable));
+    const clamped = Math.max(min, Math.min(max, min + ratio * (max - min)));
+    const snapped = min + Math.round((clamped - min) / step) * step;
+    return Math.min(max, Math.max(min, parseFloat(snapped.toFixed(6))));
+  }
+
+  function guard(input) {
+    if (input._noctraSliderGuard) return;
+    input._noctraSliderGuard = true;
+
+    let startX = 0, startY = 0, axis = null, active = false;
+
+    input.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      axis = null;
+      active = true;
+      // keep the native slider from jumping to the touch point
+      e.preventDefault();
+    }, { passive: false });
+
+    input.addEventListener('touchmove', (e) => {
+      if (!active) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+
+      if (axis === null) {
+        if (Math.abs(dx) < SLOPE && Math.abs(dy) < SLOPE) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      }
+
+      // vertical: leave the value alone (the swipe was meant for something else)
+      if (axis !== 'x') return;
+
+      e.preventDefault();
+      const next = String(valueAt(input, touch.clientX));
+      if (input.value !== next) {
+        input.value = next;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }, { passive: false });
+
+    function end() {
+      if (active && axis === 'x') input.dispatchEvent(new Event('change', { bubbles: true }));
+      active = false;
+      axis = null;
+    }
+
+    input.addEventListener('touchend', end);
+    input.addEventListener('touchcancel', () => { active = false; axis = null; });
+  }
+
+  function attach() {
+    document.querySelectorAll(SELECTOR).forEach(guard);
+  }
+
+  attach();
+  // the tempo panel and the thick timeline are built a little later
+  setTimeout(attach, 400);
+  setTimeout(attach, 1200);
+  window.addEventListener('muriel:ready', attach, { once: true });
 })();

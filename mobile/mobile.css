@@ -66,7 +66,8 @@ html.is-mobile .app-layout {
   height: auto !important;
   max-height: none !important;
   position: fixed !important;
-  inset: calc(var(--safe-top) + 108px) 0 var(--chrome-bottom) 0 !important;
+  /* the content runs to the bottom edge; the floating mini player sits on top */
+  inset: calc(var(--safe-top) + 108px) 0 0 0 !important;
 }
 html.is-mobile .main-content {
   border-radius: 0 !important;
@@ -74,8 +75,8 @@ html.is-mobile .main-content {
   background: transparent !important;
   -webkit-overflow-scrolling: touch;
 }
-/* the album page scrolls by itself (styles.css); the mini player is already below this area */
-html.is-mobile #view-album.active { padding-bottom: 24px; }
+/* the album page scrolls by itself (styles.css); the floating mini player covers its bottom */
+html.is-mobile #view-album.active { padding-bottom: calc(var(--chrome-bottom) + 24px); }
 
 /* ---------- tab bar (the rail) ---------- */
 html.is-mobile .sidebar {
@@ -164,8 +165,15 @@ html.is-mobile #right-panel {
   padding: calc(var(--safe-top) + 10px) 20px calc(var(--safe-bottom) + 170px) !important;
   z-index: 3400 !important;
   box-shadow: none !important;
+  /* opening is a little slower than the desktop drawer, so the sheet is not a jump */
+  transition: transform .46s cubic-bezier(.2, 0, 0, 1), opacity .34s cubic-bezier(.2, 0, 0, 1) !important;
 }
 html.is-mobile #right-panel.hidden { transform: translateY(100%) !important; opacity: 1 !important; }
+/* closing gets the same pace as opening: keep it visible until the slide ends,
+   then hide it (visibility is delayed instead of cutting the animation short) */
+html.is-mobile #right-panel.hidden {
+  transition: transform .46s cubic-bezier(.2, 0, 0, 1), opacity .34s cubic-bezier(.2, 0, 0, 1), visibility 0s linear .46s !important;
+}
 html.is-mobile #right-panel::before {
   content: '';
   position: absolute; top: calc(var(--safe-top) + 4px); left: 50%;
@@ -295,9 +303,40 @@ html.is-mobile #right-panel {
 }
 /* the finger moves the sheet directly: no 320ms transition chasing it (the drawer's transition is !important) */
 html.is-mobile #right-panel.is-dragging { transition: none !important; }
-/* nothing behind the sheet needs to draw while it covers the screen */
+/*
+ * Nothing behind the sheet stays visible or keeps drawing while it covers the
+ * screen: the Home content, the side rail, the top bars, the decorative
+ * background layers and the mini-player tab all fade out. Removing .np-open
+ * fades them back in after the sheet slides away.
+ */
+html.is-mobile .main-content,
+html.is-mobile .sidebar,
+html.is-mobile .titlebar,
+html.is-mobile .top-nav,
+html.is-mobile #noctra-live-bg,
+html.is-mobile .m3-organic-bg,
+html.is-mobile #custom-bg,
+html.is-mobile #cover-bg,
+html.is-mobile #bg-mesh-a,
+html.is-mobile #bg-mesh-b,
+html.is-mobile #mobile-rail-pull {
+  transition: opacity .38s cubic-bezier(.2, .8, .2, 1);
+}
 html.is-mobile body.np-open .main-content,
-html.is-mobile body.np-open .sidebar { visibility: hidden !important; }
+html.is-mobile body.np-open .sidebar,
+html.is-mobile body.np-open .titlebar,
+html.is-mobile body.np-open .top-nav,
+html.is-mobile body.np-open #noctra-live-bg,
+html.is-mobile body.np-open .m3-organic-bg,
+html.is-mobile body.np-open #custom-bg,
+html.is-mobile body.np-open #cover-bg,
+html.is-mobile body.np-open #bg-mesh-a,
+html.is-mobile body.np-open #bg-mesh-b,
+html.is-mobile body.np-open #mobile-rail-pull {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 /* lyrics fade out above the controls instead of running underneath them */
 html.is-mobile #right-panel .lyrics-container {
   -webkit-mask-image: linear-gradient(transparent, #000 8%, #000 86%, transparent);
@@ -709,7 +748,7 @@ html.is-mobile.mobile-side-nav .sidebar {
   bottom: calc(var(--safe-bottom) + 14px) !important;
   left: 0 !important;
   right: auto !important;
-  width: 76px !important;
+  width: 88px !important;
   height: auto !important;
   padding: 10px 8px !important;
   flex-direction: column !important;
@@ -745,13 +784,13 @@ html.is-mobile.mobile-side-nav .rail-action-group {
 }
 html.is-mobile.mobile-side-nav .nav-item,
 html.is-mobile.mobile-side-nav .rail-icon-btn {
-  width: 54px !important;
-  height: 48px !important;
+  width: 62px !important;
+  height: 50px !important;
   border-radius: 16px !important;
 }
 html.is-mobile.mobile-side-nav .sidebar .nav-indicator {
-  width: 40px !important;
-  height: 40px !important;
+  width: 46px !important;
+  height: 44px !important;
   border-radius: 14px !important;
 }
 html.is-mobile.mobile-side-nav .sidebar .nav-item.active .nav-indicator {
@@ -760,16 +799,16 @@ html.is-mobile.mobile-side-nav .sidebar .nav-item.active .nav-indicator {
 }
 html.is-mobile.mobile-side-nav .sidebar > .profile-switch {
   order: -1 !important;
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
-  flex: 0 0 48px !important;
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px !important;
+  flex: 0 0 54px !important;
   margin: 0 0 8px !important;
   border-radius: 50% !important;
 }
 html.is-mobile.mobile-side-nav .sidebar > .profile-switch .profile-avatar {
-  width: 38px !important;
-  height: 38px !important;
+  width: 44px !important;
+  height: 44px !important;
   font-size: 16px !important;
 }
 html.is-mobile.mobile-side-nav .rail-divider { display: none !important; }
@@ -1472,7 +1511,7 @@ html.is-mobile #playbar-artist {
   white-space: nowrap !important;
 }
 html.is-mobile .noctra-mini-wave { pointer-events: none !important; }
-html.is-mobile .main-content { padding-bottom: calc(var(--chrome-bottom) + 26px) !important; }
+html.is-mobile #main-content.main-content { padding-bottom: calc(var(--chrome-bottom) + 26px) !important; }
 html.is-mobile #setting-audio-output-row .setting-item-top { flex-wrap: wrap !important; gap: 8px !important; }
 html.is-mobile #setting-audio-output-row .m3-dropdown { width: 100% !important; }
 
@@ -2279,7 +2318,8 @@ html.is-mobile .top-nav::before,
 html.is-mobile .top-nav::after { display: none !important; }
 html.is-mobile .top-nav > * { pointer-events: auto; }
 html.is-mobile .app-layout {
-  inset: 0 0 var(--chrome-bottom) 0 !important;
+  /* the content reaches the bottom edge; the floating mini player overlays it */
+  inset: 0 !important;
 }
 html.is-mobile .main-content {
   padding-top: calc(var(--safe-top) + 62px) !important;
@@ -2329,4 +2369,43 @@ html.is-mobile body::-webkit-scrollbar-track,
 html.is-mobile body *::-webkit-scrollbar-track {
   display: none !important;
   background: transparent !important;
+}
+
+/* ---------- Noctra: mini player returns after Now Playing closes ----------
+   The sheet slides down (its .hidden transform) and the bar then rises from the
+   bottom edge, so closing the full player reads as one motion. mobile-ui.js
+   adds the class after the panel's close transition ends. */
+@keyframes noctra-mini-enter {
+  from { transform: translateY(calc(100% + var(--safe-bottom, 0px) + 12px)); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+html.is-mobile #playbar.np-mini-enter {
+  animation: noctra-mini-enter .42s cubic-bezier(.2, .8, .2, 1) both;
+  will-change: transform, opacity;
+}
+/* while the sheet slides down, the bar must not peek through it */
+html.is-mobile body.np-closing #playbar {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ---------- Noctra: the transport dock rises with the sheet ----------
+   Speed & pitch, the timeline and the buttons live in the bar docked at the
+   bottom of the Now Playing screen. They used to appear on their places while
+   the cover was still sliding up; now they rise with it (the sheet's open
+   transition is 350ms cubic-bezier(.2, 0, 0, 1)). */
+@keyframes noctra-dock-rise {
+  from { transform: translateY(calc(100% + var(--safe-bottom, 0px) + 12px)); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+html.is-mobile body.np-opening #playbar {
+  animation: noctra-dock-rise .46s cubic-bezier(.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.is-mobile body.np-opening #playbar { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.is-mobile #playbar.np-mini-enter { animation: none; }
 }
