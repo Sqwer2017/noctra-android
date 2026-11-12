@@ -3,7 +3,10 @@
   if (!document.documentElement.classList.contains('is-mobile')) return;
   const CFG = window.NOCTRA_GOOGLE_DRIVE || null;
   const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-  const FILE_NAME = 'noctra-backup.json';
+  // Same file and format as desktop Noctra: an encrypted .rfacc in appDataFolder.
+  const FILE_NAME = 'noctra-account.rfacc';
+  const LEGACY_FILE_NAME = 'noctra-backup.json';
+  const RFACC_LABEL = 'riff-account-key-v1';
   const PENDING_KEY = 'noctra_gdrive_pending';
   const LAST_KEY = 'noctra_gdrive_last';
   const AUTO_KEY = 'noctra_gdrive_auto';
@@ -44,6 +47,28 @@
   async function challenge(verifier) {
     const data = new TextEncoder().encode(verifier);
     return b64url(await crypto.subtle.digest('SHA-256', data));
+  }
+  async function deflateRaw(bytes) {
+    if (typeof CompressionStream !== 'function') throw new Error(T('This device cannot create an account backup', 'Это устройство не умеет создавать резервную копию аккаунта'));
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  // Desktop Noctra account file: "RFAC", 12-byte IV, 16-byte GCM tag,
+  // then AES-256-GCM of deflate-raw(JSON) under sha256('riff-account-key-v1').
+  async function encryptRfacc(payload) {
+    const compressed = await deflateRaw(new TextEncoder().encode(JSON.stringify(payload)));
+    const keyBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(RFACC_LABEL));
+    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, compressed));
+    const body = sealed.slice(0, sealed.length - 16);
+    const tag = sealed.slice(sealed.length - 16);
+    const out = new Uint8Array(4 + 12 + 16 + body.length);
+    out.set(new TextEncoder().encode('RFAC'), 0);
+    out.set(iv, 4);
+    out.set(tag, 16);
+    out.set(body, 32);
+    return out;
   }
   function toast(text, kind) {
     try { window.MurielCore && window.MurielCore.toast(text, kind || 'info'); } catch (e) {}
@@ -116,11 +141,12 @@
     toast(T('Google Drive connected', 'Google Диск подключён'), 'success');
   }
   async function handleRedirect(rawUrl) {
-    if (!rawUrl || !String(rawUrl).startsWith('noctra://oauth2redirect')) return;
+    const redirectUri = (CFG && CFG.redirectUri) || 'noctra://oauth2redirect';
+    if (!rawUrl || !String(rawUrl).startsWith(redirectUri)) return;
     const p = pending();
     if (!p) return;
     let u;
-    try { u = new URL(rawUrl.replace('noctra://oauth2redirect', 'https://oauth.local/')); } catch (e) { return; }
+    try { u = new URL(String(rawUrl).replace(redirectUri, 'https://oauth.local/')); } catch (e) { return; }
     const error = u.searchParams.get('error');
     const code = u.searchParams.get('code');
     const state = u.searchParams.get('state');
@@ -171,8 +197,9 @@
     }
     return res;
   }
-  async function findFile() {
-    const q = encodeURIComponent("name='" + FILE_NAME + "' and trashed=false");
+  async function findFile(name) {
+    const fileName = name || FILE_NAME;
+    const q = encodeURIComponent("name='" + fileName + "' and trashed=false");
     const res = await driveFetch('/drive/v3/files?spaces=appDataFolder&q=' + q + '&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime%20desc&pageSize=1');
     const data = await res.json();
     return data && Array.isArray(data.files) ? data.files[0] : null;
@@ -186,13 +213,27 @@
         dump[k] = localStorage.getItem(k);
       }
     } catch (e) {}
-    return { app: 'Noctra', version: 1, exportedAt: Date.now(), localStorage: dump };
+    // Desktop reads riff_user_*; keep the phone profile in that shape too.
+    try {
+      const P = window.MurielProfiles;
+      const me = P && typeof P.current === 'function' ? P.current() : null;
+      if (me && me.name) dump.riff_user_nickname = me.name;
+      let extras = {};
+      try { extras = JSON.parse(localStorage.getItem('noctra_profile_extra_v1') || '{}') || {}; } catch (e) {}
+      const ex = extras[(me && (me.id || me.name)) || 'default'] || {};
+      if (ex.bio) dump.riff_user_bio = ex.bio;
+      if (ex.effect) dump.riff_user_banner_fx = ex.effect;
+      if (typeof ex.avatar === 'string' && ex.avatar.startsWith('data:image/')) dump.riff_user_avatar = ex.avatar;
+      if (typeof ex.banner === 'string' && ex.banner.startsWith('data:image/')) dump.riff_user_banner = ex.banner;
+    } catch (e) {}
+    return { app: 'Noctra', version: 1, source: 'google-drive', exportedAt: Date.now(), localStorage: dump };
   }
   async function backup() {
     if (busy) return false;
     busy = true; refreshUI();
     try {
       const payload = accountPayload();
+      const body = await encryptRfacc(payload);
       let file = await findFile();
       if (!file) {
         const res = await driveFetch('/drive/v3/files?fields=id,name', {
@@ -201,9 +242,8 @@
         });
         file = await res.json();
       }
-      const body = JSON.stringify(payload);
       await driveFetch('/upload/drive/v3/files/' + encodeURIComponent(file.id) + '?uploadType=media&fields=id,modifiedTime,size', {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body
+        method: 'PATCH', headers: { 'Content-Type': 'application/octet-stream' }, body
       });
       const info = { at: Date.now(), size: body.length };
       localStorage.setItem(LAST_KEY, JSON.stringify(info));
@@ -220,13 +260,51 @@
     if (!window.confirm(T('Replace this profile with the Google Drive backup? Noctra will restart.', 'Заменить текущий профиль резервной копией из Google Диска? Noctra перезапустится.'))) return;
     busy = true; refreshUI();
     try {
-      const file = await findFile();
+      const file = await findFile() || await findFile(LEGACY_FILE_NAME);
       if (!file) throw new Error(T('No backup found on Google Drive', 'В Google Диске нет резервной копии'));
       const res = await driveFetch('/drive/v3/files/' + encodeURIComponent(file.id) + '?alt=media');
-      const data = await res.json();
-      const store = data && data.localStorage ? data.localStorage : data;
-      localStorage.clear();
-      Object.entries(store || {}).forEach(([k, v]) => { try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {} });
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const B = window.MurielBackup;
+      if (!B) throw new Error(T('Backup reader is not available', 'Модуль резервных копий недоступен'));
+      const parsed = await B.parseBackupFile(bytes);
+      const P = window.MurielProfiles;
+      const me = P && typeof P.current === 'function' ? P.current() : null;
+      const isDevice = (k) => !!(P && typeof P.isDevice === 'function' && P.isDevice(k));
+      const backup = B.readBackup(parsed, { isDevice });
+      if (!backup.counts.keys) throw new Error(T('That backup has nothing to restore', 'В этой копии нечего восстанавливать'));
+      const entries = backup.entries;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && !B.keepOnRestore(k, isDevice) && !(k in entries)) { try { localStorage.removeItem(k); } catch (e) {} }
+      }
+      Object.entries(entries).forEach(([k, v]) => { try { localStorage.setItem(k, v); } catch (e) {} });
+
+      // The desktop account carries profile fields under riff_user_* and its XP under
+      // riff_profile_v1; the mobile profile reads its own extras shape and XP key.
+      const raw = (parsed && parsed.localStorage) || parsed || {};
+      const rawStr = (k) => (typeof raw[k] === 'string' ? raw[k] : null);
+      const xp = rawStr('riff_profile_v1');
+      if (xp) { try { localStorage.setItem('riff_profile_v1', xp); } catch (e) {} }
+      const nickname = (rawStr('riff_user_nickname') || rawStr('muriel_user_nickname') || '').trim();
+      if (nickname && me && P && typeof P.update === 'function') {
+        try { P.update(me.id, { name: nickname.slice(0, 32) }); } catch (e) {}
+      }
+      const bio = (rawStr('riff_user_bio') || rawStr('muriel_user_bio') || '').trim();
+      const effect = (rawStr('riff_user_banner_fx') || rawStr('muriel_user_banner_fx') || '').trim();
+      const avatar = rawStr('riff_user_avatar') || rawStr('muriel_user_avatar') || '';
+      const banner = rawStr('riff_user_banner') || rawStr('muriel_user_banner') || '';
+      if (me && (bio || effect || avatar || banner)) {
+        let all = {};
+        try { all = JSON.parse(localStorage.getItem('noctra_profile_extra_v1') || '{}') || {}; } catch (e) {}
+        const id = me.id || me.name || 'default';
+        const ex = all[id] || {};
+        if (bio) ex.bio = bio.slice(0, 180);
+        if (['none', 'embers', 'fog', 'aurora', 'stars'].includes(effect)) ex.effect = effect;
+        if (typeof avatar === 'string' && avatar.startsWith('data:image/')) ex.avatar = avatar;
+        if (typeof banner === 'string' && banner.startsWith('data:image/')) ex.banner = banner;
+        all[id] = ex;
+        try { localStorage.setItem('noctra_profile_extra_v1', JSON.stringify(all)); } catch (e) {}
+      }
       toast(T('Backup restored, restarting...', 'Копия восстановлена, перезапуск...'), 'success');
       setTimeout(() => location.reload(), 500);
       return true;
