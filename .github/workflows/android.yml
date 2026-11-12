@@ -89,9 +89,27 @@ jobs:
           if [ "$head" != "$GITHUB_SHA" ]; then echo "main is at ${head::7} now; not publishing ${GITHUB_SHA::7}"; exit 0; fi
           ver="$(node -p "require('./package.json').version")"
           file="$(test -f Noctra.apk && echo Noctra.apk || echo Noctra-debug.apk)"
-          gh release delete android-latest --cleanup-tag --yes 2>/dev/null || true
-          gh release create android-latest "$file" \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --title "Noctra for Android (latest build)" \
-            --notes "Noctra $ver. Build of ${GITHUB_SHA::7} (run ${{ github.run_number }}). Download the APK on your phone and open it to install. Allow installs from your browser/files app if Android asks."
+          title="Noctra for Android (latest build)"
+          notes="Noctra $ver. Build of ${GITHUB_SHA::7} (run ${{ github.run_number }}). Download the APK on your phone and open it to install. Allow installs from your browser/files app if Android asks."
+
+          if gh release view android-latest >/dev/null 2>&1; then
+            # The rolling release already exists: replace the APK in place.
+            # Deleting the release/tag can fail and the create then aborts with
+            # "a release with the same tag name already exists" (that is how
+            # this step used to break). Updating it needs no tag changes.
+            for asset in Noctra.apk Noctra-debug.apk; do
+              if [ "$asset" != "$file" ]; then
+                gh release delete-asset android-latest "$asset" --yes >/dev/null 2>&1 || true
+              fi
+            done
+            gh release upload android-latest "$file" --clobber
+            gh release edit android-latest --title "$title" --notes "$notes"
+          else
+            # A leftover tag without a release would still block creation.
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/android-latest" >/dev/null 2>&1 || true
+            gh release create android-latest "$file" \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "$title" \
+              --notes "$notes"
+          fi
