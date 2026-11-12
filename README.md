@@ -1,5 +1,8 @@
 # Noctra for Android
 
+[![Download APK](https://img.shields.io/badge/Download-Noctra%200.1.0%20Beta-8b5cf6?style=for-the-badge)](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.1/Noctra-0.1.0-beta.1.apk)
+[![Beta release](https://img.shields.io/badge/GitHub-Release%20notes-181717?style=for-the-badge&logo=github)](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.1)
+
 Noctra is an independent, non-commercial music player for Android. It streams
 from YouTube, YouTube Music and SoundCloud, keeps a local library, downloads
 songs for offline listening, shows synced lyrics and includes a full player UI.
@@ -13,22 +16,39 @@ projects are MIT-licensed; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 > It hosts no music. Use it for private listening and only download music you
 > have the right to. See [LEGAL.md](LEGAL.md).
 
-## Current mobile work
+## Download the beta
 
-- Noctra name, package id, icons and splash screens.
-- Circular Play button in the mini player and Now Playing sheet.
-- No top app logo; the profile avatar sits in the bottom bar.
-- “Hidden menu” switch: hide the bottom bar and use a desktop-style side rail
-  that slides in from the left edge.
-- Local files are hidden from navigation by default; re-enable them in
-  Settings → Tracks → “Show local”.
-- The playlist button opens a full-screen Playlists page instead of the old
-  bottom sheet.
+**Noctra 0.1.0 Beta 1** · Android 7.0+ (API 24) · ~13 MB
+
+- [Download APK](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.1/Noctra-0.1.0-beta.1.apk)
+- [Release notes](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.1)
+- SHA-256: `dd370df656afca5fcf58470d31b0e3e33dfc6770fa5c33360e03818746cb8ad2`
+
+The beta APK is **debug-signed** for testing. Allow installation from unknown
+sources in Android settings. A future stable build will use a permanent release
+key, so beta users may need to reinstall once when switching to it.
+
+Google Drive backup is **not configured** in the public beta: the OAuth client
+secret is intentionally excluded from published builds.
+
+## What is included
+
+- YouTube, YouTube Music and SoundCloud sources with a floating search bar.
+- Noctra Home with daily discovery, live background and feature sections.
+- Mini player and full-screen Now Playing with cover glow, lyrics, karaoke,
+  Speed & Pitch and a thick timeline.
+- Listener profile with XP ranks, daily quests, all 20 achievements, custom
+  avatar, banner, bio and atmospheric effects.
+- Favorites, playlists, albums, artists, local files, history and downloads.
+- Side navigation, light/dark themes, configurable waves and PC-style sliders.
 - Android 7+ (`minSdk 24`), target SDK 36.
 
-Still being ported from the desktop Noctra build: custom Home, listener
-profile, live background, the desktop settings layout and the remaining
-Noctra sliders.
+## Install
+
+1. Download the APK above on the phone.
+2. Open it and allow installation from unknown sources for your browser or file
+   manager when Android asks.
+3. Install and open Noctra.
 
 ## Preview on a PC
 
@@ -55,12 +75,20 @@ cd android
 The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 For a release APK, provide a keystore through the `NOCTRA_KEYSTORE`,
-`NOCTRA_KEYSTORE_PASSWORD` and `NOCTRA_KEY_PASSWORD` environment variables and
-run `./gradlew assembleRelease`.
+`NOCTRA_KEYSTORE_PASSWORD`, `NOCTRA_KEY_ALIAS` and `NOCTRA_KEY_PASSWORD`
+environment variables and run `./gradlew assembleRelease`.
 
 The GitHub Actions workflow in `.github/workflows/android.yml` builds an APK.
 When the keystore secrets are configured, it publishes a signed `Noctra.apk`;
 without them it publishes a debug APK for testing.
+
+## Google Drive
+
+Google Drive backup uses `drive.appdata` and is optional. It needs a Google
+OAuth client created for this app. The client secret is never committed: put
+local credentials in `mobile/google-drive-config.js` (gitignored). For public
+builds prefer an Android OAuth client with the package name and signing SHA-1,
+which does not require a client secret.
 
 ## Data
 
