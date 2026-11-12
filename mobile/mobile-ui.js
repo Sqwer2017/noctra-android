@@ -53,6 +53,59 @@
   window.NoctraXP = { ranks: RANKS, rankFor, total: totalXP };
 })();
 
+/* Noctra: finish a desktop-to-phone account transfer.
+   A PC .rfacc carries the library and settings, but the desktop profile name, XP,
+   bio and images live in keys the mobile profile doesn't read directly. The
+   transfer file also includes devsize_pc_transfer_v1 (a key the restore lets through);
+   consume it once on start. */
+(() => {
+  if (!document.documentElement.classList.contains('is-mobile')) return;
+  const KEY = 'devsize_pc_transfer_v1';
+  const LEGACY_KEY = 'noctra_pc_transfer_v1';
+  let done = false;
+  function apply() {
+    if (done) return;
+    let transfer = null;
+    try { transfer = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY) || 'null'); } catch (e) {}
+    if (!transfer) { done = true; return; }
+    const P = window.MurielProfiles;
+    const me = P && typeof P.current === 'function' ? P.current() : null;
+    if (!me) return;
+    const id = me.id || me.name || 'default';
+    let extras = {};
+    try { extras = JSON.parse(localStorage.getItem('noctra_profile_extra_v1') || '{}') || {}; } catch (e) {}
+    const ex = extras[id] || {};
+    if (typeof transfer.bio === 'string' && transfer.bio.trim()) ex.bio = transfer.bio.trim().slice(0, 180);
+    if (['none', 'embers', 'fog', 'aurora', 'stars'].includes(transfer.effect)) ex.effect = transfer.effect;
+    if (typeof transfer.avatar === 'string' && transfer.avatar.startsWith('data:image/')) ex.avatar = transfer.avatar;
+    if (typeof transfer.banner === 'string' && transfer.banner.startsWith('data:image/')) ex.banner = transfer.banner;
+    extras[id] = ex;
+    try { localStorage.setItem('noctra_profile_extra_v1', JSON.stringify(extras)); } catch (e) {}
+    if (transfer.nickname && P && typeof P.update === 'function') {
+      try { P.update(me.id, { name: String(transfer.nickname).slice(0, 32) }); } catch (e) {}
+    }
+    // Desktop progression travels in devsize_pc_profile_v1 (muriel_profile_* is never
+    // restored); the mobile XP store reads riff_profile_v1.
+    try {
+      const raw = localStorage.getItem('devsize_pc_profile_v1') || localStorage.getItem('muriel_profile_v1');
+      const imported = JSON.parse(raw || 'null');
+      const current = JSON.parse(localStorage.getItem('riff_profile_v1') || 'null');
+      const importedXp = Number(imported && imported.progression && imported.progression.totalXP) || 0;
+      const currentXp = Number(current && current.progression && current.progression.totalXP) || 0;
+      if (imported && importedXp >= currentXp) localStorage.setItem('riff_profile_v1', JSON.stringify(imported));
+    } catch (e) {}
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    done = true;
+    window.dispatchEvent(new Event('noctra:xp'));
+  }
+  if (window.MurielProfiles) apply();
+  else {
+    const t = setInterval(() => { if (window.MurielProfiles) { clearInterval(t); apply(); } }, 120);
+    setTimeout(() => clearInterval(t), 6000);
+  }
+})();
+
 (() => {
   const panel = document.getElementById('right-panel');
   const playbar = document.getElementById('playbar');
@@ -3237,6 +3290,44 @@
     });
   };
   const start = () => { wire(); setTimeout(wire, 600); setTimeout(wire, 1600); };
+  if (document.readyState === 'complete' || document.readyState === 'interactive') start();
+  else document.addEventListener('DOMContentLoaded', start, { once: true });
+  window.addEventListener('muriel:ready', start, { once: true });
+})();
+
+/* Noctra: a short, discoverable path for moving a desktop account through Google Drive. */
+(() => {
+  if (!document.documentElement.classList.contains('is-mobile')) return;
+  const ru = () => localStorage.getItem('muriel_ui_lang') === 'ru';
+  const T = (en, r) => (ru() ? r : en);
+  function add() {
+    const section = document.querySelector('.settings-section[data-cat="integrations"]');
+    if (!section || document.getElementById('card-pc-transfer')) return;
+    const group = section.querySelector('.m3-group') || section;
+    const card = document.createElement('div');
+    card.className = 'setting-item';
+    card.id = 'card-pc-transfer';
+    card.innerHTML = '<div class="setting-item-top" style="align-items:flex-start;gap:10px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="12.5" height="9" rx="1.5"/><path d="M8.75 17.5H6a1.5 1.5 0 0 1-1.5-1.5v-1.5"/><rect x="15" y="10" width="6.5" height="10" rx="1.6"/><path d="M17.6 18h1.3"/></svg>' +
+        '<div style="display:flex;flex-direction:column;gap:3px;min-width:0;">' +
+          '<span class="setting-name" data-no-i18n>' + T('Move from PC', 'Перенос с ПК') + '</span>' +
+          '<span data-no-i18n style="font-size:calc(11px * var(--font-scale,1));line-height:1.4;color:var(--md-sys-color-on-surface-variant);">' + T('Export a .rfacc backup on PC, upload it to Google Drive, then pick it here.', 'Экспортируй .rfacc на ПК, загрузи в Google Диск и выбери файл здесь.') + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;">' +
+      '<button type="button" class="btn-outline-pill" id="pc-transfer-pick" data-no-i18n>' + T('Choose .rfacc', 'Выбрать .rfacc') + '</button>' +
+      '<a class="btn-outline-pill" href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" data-no-i18n>' + T('Open Google Drive', 'Открыть Google Диск') + '</a>' +
+    '</div>';
+    group.insertBefore(card, group.querySelector('.setting-item') || null);
+    card.querySelector('#pc-transfer-pick').addEventListener('click', () => {
+      const button = document.getElementById('btn-import-account');
+      if (button) button.click();
+      else document.getElementById('account-file-input')?.click();
+    });
+  }
+  const start = () => add();
   if (document.readyState === 'complete' || document.readyState === 'interactive') start();
   else document.addEventListener('DOMContentLoaded', start, { once: true });
   window.addEventListener('muriel:ready', start, { once: true });

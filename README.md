@@ -1,7 +1,7 @@
 # Noctra for Android
 
-[![Download APK](https://img.shields.io/badge/Download-Noctra%200.1.0%20Beta-8b5cf6?style=for-the-badge)](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.1/Noctra-0.1.0-beta.1.apk)
-[![Beta release](https://img.shields.io/badge/GitHub-Release%20notes-181717?style=for-the-badge&logo=github)](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.1)
+[![Download APK](https://img.shields.io/badge/Download-Noctra%200.1.0%20Beta%202-8b5cf6?style=for-the-badge)](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.2/Noctra-0.1.0-beta.2.apk)
+[![Beta release](https://img.shields.io/badge/GitHub-Release%20notes-181717?style=for-the-badge&logo=github)](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.2)
 
 Noctra is an independent, non-commercial music player for Android. It streams
 from YouTube, YouTube Music and SoundCloud, keeps a local library, downloads
@@ -18,11 +18,11 @@ projects are MIT-licensed; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Download the beta
 
-**Noctra 0.1.0 Beta 1** · Android 7.0+ (API 24) · ~13 MB
+**Noctra 0.1.0 Beta 2** · Android 7.0+ (API 24) · ~13 MB
 
-- [Download APK](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.1/Noctra-0.1.0-beta.1.apk)
-- [Release notes](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.1)
-- SHA-256: `dd370df656afca5fcf58470d31b0e3e33dfc6770fa5c33360e03818746cb8ad2`
+- [Download APK](https://github.com/Sqwer2017/noctra-android/releases/download/v0.1.0-beta.2/Noctra-0.1.0-beta.2.apk)
+- [Release notes](https://github.com/Sqwer2017/noctra-android/releases/tag/v0.1.0-beta.2)
+- SHA-256: `6d1c8e18771b99573fd93e3f8ccba9ab85042fbdeb3ebd4a709f555ef04d83c1`
 
 The beta APK is **debug-signed** for testing. Allow installation from unknown
 sources in Android settings. A future stable build will use a permanent release
@@ -30,6 +30,14 @@ key, so beta users may need to reinstall once when switching to it.
 
 Google Drive backup is **not configured** in the public beta: the OAuth client
 secret is intentionally excluded from published builds.
+
+## Move an account from PC
+
+The mobile build can read a desktop Noctra `.rfacc` backup (Settings → Storage
+→ “Restore a backup”, or Settings → Integrations → “Move from PC”). Export the
+account on PC, upload the file to Google Drive, then pick it on the phone. The
+library, favorites, playlists, history, XP, profile name, bio, avatar, banner
+and effect are restored.
 
 ## What is included
 
