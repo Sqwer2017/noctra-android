@@ -33,8 +33,17 @@
                 <data android:scheme="noctra" android:host="link" />
                 <!-- noctra://playlist?p=… from a shared playlist link (adds the playlist) -->
                 <data android:scheme="noctra" android:host="playlist" />
-                <!-- Noctra Google Drive OAuth callback -->
+                <!-- Noctra Google Drive OAuth callback (legacy scheme) -->
                 <data android:scheme="noctra" android:host="oauth2redirect" />
+            </intent-filter>
+
+            <!-- Google's Android OAuth client uses the client-ID custom scheme,
+                 e.g. com.googleusercontent.apps.CLIENT_ID:/oauth2redirect -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.googleusercontent.apps.454232821400-4hhfs8auq14adj2ac90s9ai5l0d7ngdg" android:pathPrefix="/oauth2redirect" />
             </intent-filter>
 
         </activity>
