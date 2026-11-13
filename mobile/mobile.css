@@ -2409,3 +2409,26 @@ html.is-mobile body.np-opening #playbar {
 @media (prefers-reduced-motion: reduce) {
   html.is-mobile #playbar.np-mini-enter { animation: none; }
 }
+
+/* ---------- phones: no live blur, no continuous decoration behind scrolling ----------
+   A fixed rail with backdrop-filter over a scrolling list re-blurs the content
+   underneath on every frame; on Android the compositor then drops layers, which
+   is what made the list flicker, cards vanish and the rail icons "crash".
+   The live background keeps its look but stops animating its large blurred
+   layers for the same reason. */
+html.is-mobile.mobile-side-nav .sidebar {
+  background: var(--md-sys-color-surface-container-solid, #1E1F22) !important;
+}
+html.is-mobile.mobile-side-nav .sidebar,
+html.is-mobile #np-profile-badge,
+html.is-mobile #nu-readmore-modal,
+html.is-mobile #nu-dev-fab,
+html.is-mobile #nu-dev-tip {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.is-mobile #noctra-live-bg .noctra-orb,
+html.is-mobile #noctra-live-bg .noctra-dot {
+  animation: none !important;
+  will-change: auto;
+}

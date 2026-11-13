@@ -3615,16 +3615,18 @@
 
 /* Noctra: a slider under the finger only moves on a deliberate horizontal drag.
    Native range inputs jump to the touch point on touchstart, so a swipe that
-   merely started on the Speed slider or the thick timeline changed playback
-   speed or seeked the song. Here the native jump is suppressed: the value
-   follows the finger only while the gesture is horizontal, and a vertical swipe
-   or a plain tap leaves it exactly where it was. */
+   merely started on a slider changed a setting, playback speed or the song
+   position — in the player, in Settings and in the Audio window. Here the
+   native jump is suppressed: the value follows the finger only while the
+   gesture is horizontal, and a vertical swipe or a plain tap leaves it exactly
+   where it was. */
 (() => {
   if (!document.documentElement.classList.contains('is-mobile')) return;
 
   const SLOPE = 6;
   const THUMB = 10;
-  const SELECTOR = '#right-panel input[type="range"], #np-tempo-panel input[type="range"], #np-thick-timeline input[type="range"], #tv-karaoke input[type="range"]';
+  // every range in the app: settings, Audio, EQ, the player and the lyrics sheet
+  const SELECTOR = 'input[type="range"]';
 
   function valueAt(input, clientX) {
     const rect = input.getBoundingClientRect();
@@ -3695,4 +3697,15 @@
   setTimeout(attach, 400);
   setTimeout(attach, 1200);
   window.addEventListener('muriel:ready', attach, { once: true });
+
+  /*
+   * Sliders built later (the Audio window, EQ, settings sub-pages) are guarded
+   * on the first touch. pointerdown fires before touchstart, so the guard's
+   * touchstart listener is attached in time for that same gesture.
+   */
+  document.addEventListener('pointerdown', (e) => {
+    const target = e.target;
+    const input = target && target.closest ? target.closest('input[type="range"]') : null;
+    if (input) guard(input);
+  }, { passive: true, capture: true });
 })();

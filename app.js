@@ -8161,15 +8161,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // lists inside the drawer scroll the drawer pane, everything else scrolls the main column
     const scrollParent = container.closest('.drawer-pane') || document.querySelector('.main-content');
-    if (container._vScrollHandler && scrollParent) {
-      scrollParent.removeEventListener('scroll', container._vScrollHandler);
+    if (container._vScrollHandler && container._vScrollParent) {
+      container._vScrollParent.removeEventListener('scroll', container._vScrollHandler);
     }
+    container._vScrollParent = scrollParent;
+    container._vScrollHandler = null;
     
     container.innerHTML = '';
+    container.style.paddingTop = '0px';
+    container.style.paddingBottom = '0px';
     
     if (!tracks || tracks.length === 0) {
-      container.style.paddingTop = '0px';
-      container.style.paddingBottom = '0px';
       const emptyMessages = {
         search: 'No matching tracks. Try a different search',
         favorites: 'No favourites yet. Use the heart on a track to save it',
@@ -8181,64 +8183,58 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const itemHeight = 64;
-    const overscan = 15;
-    
-    function renderChunk() {
-      if (!scrollParent || container._isDraggingReorder) return;
-      const parentRect = scrollParent.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const relativeTop = containerRect.top - parentRect.top + scrollParent.scrollTop;
-      
-      const visibleTop = Math.max(0, scrollParent.scrollTop - relativeTop);
-      let startIndex = Math.floor(visibleTop / itemHeight) - overscan;
-      let endIndex = Math.ceil((visibleTop + scrollParent.clientHeight) / itemHeight) + overscan;
-      
-      startIndex = Math.floor(startIndex / 5) * 5;
-      endIndex = Math.ceil(endIndex / 5) * 5;
-      
-      startIndex = Math.max(0, startIndex);
-      endIndex = Math.min(tracks.length, endIndex);
-      
-      if (container._lastStartIndex === startIndex && container._lastEndIndex === endIndex) return;
-      container._lastStartIndex = startIndex;
-      container._lastEndIndex = endIndex;
-      
+    /*
+     * Progressive list: the first 200 rows are in the DOM at once and the next
+     * chunks are appended when the end of the list comes near the viewport.
+     *
+     * The old renderer windowed the list by replacing innerHTML on every scroll
+     * step, so the visible cards were destroyed and recreated several times a
+     * second. That is what made the list flicker, cards disappear and the rail
+     * icons drop on Android. Appending never touches rows already on screen.
+     */
+    const CHUNK = 200;
+    let rendered = 0;
+    let appending = false;
+
+    function appendChunk() {
+      if (container._isDraggingReorder || rendered >= tracks.length) return;
+
       const currentCanonicalId = state.currentTrack ? getTrackCanonicalId(state.currentTrack) : '';
+      const firstChunk = rendered === 0;
+      const end = Math.min(tracks.length, rendered + CHUNK);
       const fragment = document.createDocumentFragment();
-      for (let idx = startIndex; idx < endIndex; idx++) {
-         const track = tracks[idx];
-         const row = createTrackRow(track, idx, currentCanonicalId, context, tracks, container);
-         if (container._hasInitialRendered) row.style.animation = 'none';
-         fragment.appendChild(row);
+
+      for (let idx = rendered; idx < end; idx++) {
+        const row = createTrackRow(tracks[idx], idx, currentCanonicalId, context, tracks, container);
+        if (!firstChunk) row.style.animation = 'none';
+        fragment.appendChild(row);
       }
-      
-      container.innerHTML = '';
-      container.style.paddingTop = `${startIndex * itemHeight}px`;
-      container.style.paddingBottom = `${(tracks.length - endIndex) * itemHeight}px`;
+
+      rendered = end;
       container.appendChild(fragment);
-      container._hasInitialRendered = true;
       highlightPlayingRow();
     }
-    
-    container._vScrollHandler = () => {
-      if (!container._ticking) {
+
+    // all rows are in the DOM now, so the reorder code numbers them from zero
+    container._lastStartIndex = 0;
+
+    appendChunk();
+
+    if (scrollParent && rendered < tracks.length) {
+      container._vScrollHandler = () => {
+        if (appending || rendered >= tracks.length) return;
+        appending = true;
         window.requestAnimationFrame(() => {
-          renderChunk();
-          container._ticking = false;
+          appending = false;
+          if (rendered >= tracks.length) return;
+          const parentRect = scrollParent.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          // less than ~900px of the list remains below the viewport: add the next chunk
+          if (containerRect.bottom - parentRect.bottom < 900) appendChunk();
         });
-        container._ticking = true;
-      }
-    };
-    
-    if (scrollParent) {
-       scrollParent.addEventListener('scroll', container._vScrollHandler, { passive: true });
+      };
+      scrollParent.addEventListener('scroll', container._vScrollHandler, { passive: true });
     }
-    
-    container._hasInitialRendered = false;
-    container._lastStartIndex = -1;
-    container._lastEndIndex = -1;
-    renderChunk();
   }
 
   function highlightPlayingRow() {

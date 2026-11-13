@@ -54,9 +54,10 @@ and effect are restored.
 
 ## Recent fixes
 
-- **Accidental touches.** The Speed & Pitch slider, the thick timeline and the
-  full-screen lyrics sliders now move only on a deliberate horizontal drag: a
-  vertical swipe or a tap leaves the value alone.
+- **Accidental touches.** Every slider in the app — Settings, the Audio window,
+  Speed & Pitch, the thick timeline and the lyrics sheet — now moves only on a
+  deliberate horizontal drag: a vertical swipe or a tap leaves the value alone.
+  Sliders created later are protected on their first touch.
 - **Full-screen player gestures.** Swipe down or up on the cover or the header
   to close it; a horizontal swipe there still changes tracks. A cancelled
   gesture no longer leaves the sheet shifted or stuck, and the sheet is reset
@@ -68,6 +69,13 @@ and effect are restored.
   sheet instead of appearing in place.
 - **Closing animation.** It now has the same pace as opening; the mini player
   waits a moment, then slides up from the bottom edge.
+- **Track lists.** The first 200 rows render at once and the next chunks are
+  appended as you approach the end of the list. Rows already on screen are
+  never destroyed and recreated, which is what made long lists flicker while
+  scrolling.
+- **Less compositor work on phones.** The side rail draws without backdrop
+  blur and the live background's large blurred layers no longer animate, so
+  scrolling does not make UI layers drop.
 - **Interface size on phones.** The UI scale slider used to do nothing: the
   mobile bridge makes `setZoomFactor` a no-op. It now scales the page, and at
   100% no zoom is applied at all.
@@ -76,6 +84,8 @@ and effect are restored.
   higher-specificity rule, so the last row stays clear of the bar.
 - **Seeking.** Dragging the thick timeline is throttled, so a stream is not
   reopened on every pixel; the final position is always committed.
+- **Notification icon.** The playback notification shows the app's N mark
+  instead of the old sparkle.
 
 ## Install
 
