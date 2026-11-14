@@ -2432,3 +2432,31 @@ html.is-mobile #noctra-live-bg .noctra-dot {
   animation: none !important;
   will-change: auto;
 }
+
+/* ---------- Accidental touch: app-like text behaviour ----------
+   A long press or a swipe over chrome must not select labels or pop the native
+   text menu. Fields keep normal selection. */
+html.is-mobile,
+html.is-mobile body,
+html.is-mobile .app-layout,
+html.is-mobile #main-content,
+html.is-mobile .sidebar,
+html.is-mobile #playbar,
+html.is-mobile #right-panel {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+html.is-mobile input,
+html.is-mobile textarea,
+html.is-mobile [contenteditable="true"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* While the search results are open the daily card goes away: it is a sibling
+   of the home block, so hiding the block alone left it above the results. */
+html.is-mobile #view-discover.is-searching #noctra-daily {
+  display: none !important;
+}

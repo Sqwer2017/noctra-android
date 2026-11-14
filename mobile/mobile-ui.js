@@ -2507,6 +2507,18 @@
     window.addEventListener('muriel:library', render);
     window.addEventListener('muriel:track', () => { if (!section.hidden) render(); });
   }
+  /*
+   * The daily card is inserted before .discover-content, so hiding the home
+   * block for a search used to leave "Discovery of the day" above the results.
+   * The results container is the source of truth for the search state.
+   */
+  function syncSearchState() {
+    const results = document.getElementById('search-results-container');
+    view.classList.toggle('is-searching', !!results && !results.classList.contains('hidden'));
+  }
+  const resultsEl = document.getElementById('search-results-container');
+  if (resultsEl) new MutationObserver(syncSearchState).observe(resultsEl, { attributes: true, attributeFilter: ['class'] });
+  syncSearchState();
   const start = () => build();
   if (document.readyState === 'complete' || document.readyState === 'interactive') start();
   else document.addEventListener('DOMContentLoaded', start, { once: true });
@@ -3613,6 +3625,215 @@
   window.addEventListener('muriel:ready', start, { once: true });
 })();
 
+/* ── Noctra: accidental touch / palm rejection ─────────────────────────────
+ *
+ * One place for the touch rules that the rest of the phone UI asks about:
+ *
+ *  - EDGE DEAD ZONE: a touch in the first 12px (22px in Enhanced) of the screen
+ *    is the Android/iOS back gesture, not a tap. The app's own edge controls
+ *    (rail pull tab, bottom rail, playbar, top bar) are exempt so they stay
+ *    usable.
+ *  - PALM REJECTION: a contact wider than 36px is a palm/cheek, not a finger.
+ *    Browsers report it as `width`/`height` on PointerEvent and as a radius on
+ *    Touch; both are used.
+ *  - WAKE-UP GRACE: touches in the first 250ms (350ms in Enhanced) after the
+ *    screen wakes / the app returns to the foreground are ignored — that is
+ *    the usual "phone in pocket" accident.
+ *  - SCROLL-STOP TAPS: a tap within 120ms after the last scroll only stops the
+ *    momentum; it does not open the track under the finger.
+ *  - DRAG TAPS: a tap that moved more than the slop (10px / 14px) is a drag.
+ *
+ * Mouse input is never delayed and never filtered: every check below returns
+ * early unless `pointerType === 'touch'`.
+ *
+ * The mode is stored in localStorage and can be changed in Settings → Layout &
+ * size → Touch guard (off / standard / enhanced).
+ */
+(() => {
+  if (!document.documentElement.classList.contains('is-mobile')) return;
+
+  const KEY = 'noctra_touch_guard';
+
+  /** @type {Record<string, {edge:number,slop:number,scroll:boolean,wake:number,palm:boolean,scrollWindow:number}>} */
+  const MODES = {
+    off:      { edge: 0,  slop: 10, scroll: false, wake: 0,   palm: false, scrollWindow: 0 },
+    standard: { edge: 12, slop: 10, scroll: true,  wake: 250, palm: true,  scrollWindow: 120 },
+    enhanced: { edge: 22, slop: 14, scroll: true,  wake: 350, palm: true,  scrollWindow: 160 },
+  };
+
+  let mode = 'standard';
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved && MODES[saved]) mode = saved;
+  } catch (e) {}
+
+  const cfg = () => MODES[mode] || MODES.standard;
+
+  /** chrome that lives at the screen edge on purpose — the dead zone skips it */
+  const EDGE_EXEMPT = '#mobile-rail-pull, .sidebar, #sidebar, #playbar, .titlebar, .top-nav';
+
+  let lastScrollAt = 0;
+  let wakeUntil = 0;
+  let down = null;
+  /** @type {{x:number,y:number,until:number}|null} the click this gesture must not produce */
+  let blockClick = null;
+
+  /** karaoke lyrics scroll themselves; that is not a gesture that must eat taps */
+  const AUTO_SCROLL = '#lyrics-container, #sync-mode-lyrics, #mini-lyrics-container';
+  function markScroll(e) {
+    const target = e && e.target;
+    if (target && target.closest && target.closest(AUTO_SCROLL)) return;
+    lastScrollAt = performance.now();
+  }
+
+  // scroll does not bubble, but capture on window/document sees element scrolling
+  window.addEventListener('scroll', markScroll, { passive: true, capture: true });
+  document.addEventListener('scroll', markScroll, { passive: true, capture: true });
+  const mainScroller = document.getElementById('main-content');
+  if (mainScroller) mainScroller.addEventListener('scroll', markScroll, { passive: true });
+
+  function noteWake() {
+    if (cfg().wake > 0) wakeUntil = performance.now() + cfg().wake;
+  }
+  window.addEventListener('focus', noteWake);
+  window.addEventListener('pageshow', noteWake);
+  // back from the background: the first touches are usually the phone in a pocket
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) noteWake(); }, true);
+
+  const palmWide = (w, h) => (w || 0) > 36 || (h || 0) > 36;
+
+  function edgeOk(clientX, target) {
+    const c = cfg();
+    if (c.edge <= 0) return true;
+    if (target && target.closest && target.closest(EDGE_EXEMPT)) return true;
+    return clientX >= c.edge && clientX <= window.innerWidth - c.edge;
+  }
+
+  /** PointerEvent filter (touch only). */
+  function allowsPointer(e) {
+    if (!e || e.pointerType !== 'touch') return true;
+    const c = cfg();
+    if (!e.isPrimary) return false;
+    if (c.palm && palmWide(e.width, e.height)) return false;
+    if (!edgeOk(e.clientX, e.target)) return false;
+    if (c.wake > 0 && performance.now() < wakeUntil) return false;
+    return true;
+  }
+
+  /**
+   * Touch filter for the slider guard (Touch events do not expose
+   * pointerType). `target` is used for the edge exemption.
+   */
+  function allowsTouch(touch, target) {
+    if (!touch) return false;
+    const c = cfg();
+    if (c.palm && palmWide((touch.radiusX || 0) * 2, (touch.radiusY || 0) * 2)) return false;
+    if (!edgeOk(touch.clientX, target)) return false;
+    if (c.wake > 0 && performance.now() < wakeUntil) return false;
+    return true;
+  }
+
+  /**
+   * Only a click at the gesture point is swallowed: a mouse click elsewhere,
+   * a keyboard activation or a second finger on another control must not be.
+   */
+  function blockNextClick(x, y) {
+    blockClick = { x: Number(x) || 0, y: Number(y) || 0, until: performance.now() + 600 };
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') { down = null; return; }
+    if (mode === 'off') { down = null; return; }
+    if (!allowsPointer(e)) {
+      down = null;
+      blockNextClick(e.clientX, e.clientY);
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    blockClick = null;
+    down = { x: e.clientX, y: e.clientY };
+  }, { capture: true, passive: false });
+
+  document.addEventListener('pointerup', (e) => {
+    if (e.pointerType !== 'touch' || !down || mode === 'off') { down = null; return; }
+    const c = cfg();
+    const dx = Math.abs(e.clientX - down.x);
+    const dy = Math.abs(e.clientY - down.y);
+    if (dx > c.slop || dy > c.slop) {
+      blockNextClick(e.clientX, e.clientY); // a drag, not a tap
+    } else if (c.scroll && performance.now() - lastScrollAt < c.scrollWindow) {
+      blockNextClick(e.clientX, e.clientY); // the finger only stopped the momentum
+    }
+    down = null;
+  }, { capture: true, passive: true });
+
+  document.addEventListener('pointercancel', () => { down = null; }, { capture: true, passive: true });
+
+  document.addEventListener('click', (e) => {
+    const block = blockClick;
+    blockClick = null;
+    if (!block || performance.now() > block.until) return;
+    if (Math.hypot(e.clientX - block.x, e.clientY - block.y) > 32) return;
+    e.stopPropagation();
+    e.preventDefault();
+  }, { capture: true });
+
+  /* ---------- Settings → Layout & size → Touch guard ---------- */
+  function paintMode() {
+    document.querySelectorAll('[data-touch-guard]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.touchGuard === mode);
+      btn.setAttribute('aria-pressed', btn.dataset.touchGuard === mode ? 'true' : 'false');
+    });
+  }
+
+  function setMode(next) {
+    if (!MODES[next]) return;
+    mode = next;
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    paintMode();
+  }
+
+  function addSettingsRow() {
+    const group = document.querySelector('.settings-section[data-cat="interface"] .m3-group[data-group="layout"]');
+    if (!group || document.getElementById('setting-touch-guard')) return;
+
+    const row = document.createElement('div');
+    row.className = 'setting-item';
+    row.id = 'setting-touch-guard';
+    row.innerHTML = `
+      <div class="setting-item-top" style="align-items: center;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="setting-name" data-i18n>Touch guard</span>
+          <span style="font-size: calc(12px * var(--font-scale, 1)); color: var(--md-sys-color-outline);" data-i18n>Ignores edge, palm and scroll-stop touches. Mouse input is never delayed.</span>
+        </div>
+      </div>
+      <div class="theme-mode-toggle" id="touch-guard-toggle" style="margin-top: 10px;">
+        <button type="button" class="theme-mode-btn" data-touch-guard="off" data-i18n>Off</button>
+        <button type="button" class="theme-mode-btn" data-touch-guard="standard" data-i18n>Standard</button>
+        <button type="button" class="theme-mode-btn" data-touch-guard="enhanced" data-i18n>Enhanced</button>
+      </div>`;
+
+    row.querySelectorAll('[data-touch-guard]').forEach((btn) => {
+      btn.addEventListener('click', () => setMode(btn.dataset.touchGuard));
+    });
+
+    group.appendChild(row);
+    paintMode();
+  }
+
+  window.NoctraTouchGuard = {
+    get mode() { return mode; },
+    setMode,
+    allowsPointer,
+    allowsTouch,
+  };
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') addSettingsRow();
+  else document.addEventListener('DOMContentLoaded', addSettingsRow, { once: true });
+  window.addEventListener('muriel:ready', addSettingsRow, { once: true });
+})();
+
 /* Noctra: a slider under the finger only moves on a deliberate horizontal drag.
    Native range inputs jump to the touch point on touchstart, so a swipe that
    merely started on a slider changed a setting, playback speed or the song
@@ -3645,13 +3866,29 @@
     input._noctraSliderGuard = true;
 
     let startX = 0, startY = 0, axis = null, active = false;
+    let initialValue = null;
+    let changed = false;
 
     input.addEventListener('touchstart', (e) => {
       if (e.touches.length !== 1) return;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      const touch = e.touches[0];
+
+      /*
+       * Edge / palm / wake-up filter. On a rejected touch we do NOT call
+       * preventDefault: the system back gesture and normal scrolling must
+       * still work there.
+       */
+      if (window.NoctraTouchGuard && !window.NoctraTouchGuard.allowsTouch(touch, input)) {
+        active = false;
+        return;
+      }
+
+      startX = touch.clientX;
+      startY = touch.clientY;
       axis = null;
       active = true;
+      changed = false;
+      initialValue = input.value;
       // keep the native slider from jumping to the touch point
       e.preventDefault();
     }, { passive: false });
@@ -3674,6 +3911,7 @@
       const next = String(valueAt(input, touch.clientX));
       if (input.value !== next) {
         input.value = next;
+        changed = true;
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }, { passive: false });
@@ -3682,10 +3920,29 @@
       if (active && axis === 'x') input.dispatchEvent(new Event('change', { bubbles: true }));
       active = false;
       axis = null;
+      changed = false;
+      initialValue = null;
+    }
+
+    /*
+     * A cancelled gesture (system back, the notification shade, a palm) rolls
+     * the value back: the slider must not keep a position the user never chose.
+     */
+    function cancel() {
+      if (active && changed && initialValue !== null && input.value !== initialValue) {
+        input.value = initialValue;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      active = false;
+      axis = null;
+      changed = false;
+      initialValue = null;
     }
 
     input.addEventListener('touchend', end);
-    input.addEventListener('touchcancel', () => { active = false; axis = null; });
+    input.addEventListener('touchcancel', cancel);
+    input.addEventListener('pointercancel', cancel);
   }
 
   function attach() {

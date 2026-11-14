@@ -230,7 +230,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     'Added {0} tracks to "{1}"', 'Playlist deleted', 'Link copied{0}', 'Removed from library', 'Could not play this song. Try again or skip.',
     'Offline: connect to the internet to search new tracks', 'No matching tracks. Try a different search', 'Search for "{0}"', 'Actions',
     'Playlists', 'Favorites', 'In playlists', 'Queue', 'History', 'Library', 'Online', 'Discover', 'View', 'Audio', 'Your stats',
-    'Repeat: playlist', 'Repeat: this song', 'Start radio', 'Radio · {0}', 'Radio · {0} and {1} more', 'Sleep timer: {0} min', 'Sleep timer: end of track']);
+    'Repeat: playlist', 'Repeat: this song', 'Start radio', 'Radio · {0}', 'Radio · {0} and {1} more', 'Sleep timer: {0} min', 'Sleep timer: end of track',
+    'Clear the playback queue?']);
 
   const toastQueue = [];
   const MAX_QUEUED_TOASTS = 10;
@@ -10833,6 +10834,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (el.btnClearQueue) {
     el.btnClearQueue.addEventListener('click', () => {
+      if (state.queue.length && !window.confirm(T('Clear the playback queue?'))) return;
       state.queue = [];
       state.queueIndex = -1;
       state.queueHistory = [];
