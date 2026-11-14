@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>Noctra</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,7 +25,7 @@
         nav = localStorage.getItem('noctra_hidden_nav');
         migrated = localStorage.getItem('noctra_side_nav_migrated');
       } catch (e) {}
-      if (nav === null || (nav === '0' && !migrated)) root.classList.add('mobile-side-nav');
+      if (nav === '1') root.classList.add('mobile-side-nav');
     })();
   </script>
 </head>

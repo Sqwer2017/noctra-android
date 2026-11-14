@@ -642,6 +642,22 @@
     if (toggle) toggle.classList.toggle('active', !!on);
   }
 
+  function ensureMobileDock() {
+    let dock = document.getElementById('mobile-dock');
+    if (!dock) {
+      dock = document.createElement('footer');
+      dock.id = 'mobile-dock';
+      dock.className = 'mobile-dock';
+      document.body.appendChild(dock);
+    }
+    document.documentElement.classList.add('has-dock');
+    const playbar = document.getElementById('playbar');
+    const sidebar = document.getElementById('sidebar');
+    if (playbar && playbar.parentElement !== dock) dock.appendChild(playbar);
+    if (sidebar && sidebar.parentElement !== dock) dock.appendChild(sidebar);
+    return dock;
+  }
+
   function buildChrome() {
     if (!document.getElementById('mobile-rail-backdrop')) {
       const backdrop = document.createElement('div');
@@ -651,7 +667,11 @@
       document.body.appendChild(backdrop);
     }
     const sidebar = document.getElementById('sidebar');
-    if (sidebar && sidebar.parentElement !== document.body) document.body.appendChild(sidebar);
+    if (!isOn()) {
+      ensureMobileDock();
+    } else {
+      if (sidebar && sidebar.parentElement !== document.body) document.body.appendChild(sidebar);
+    }
     const existingBackdrop = document.getElementById('mobile-rail-backdrop');
     if (existingBackdrop && existingBackdrop.parentElement !== document.body) document.body.appendChild(existingBackdrop);
     if (!document.getElementById('mobile-rail-pull')) {
@@ -1106,18 +1126,37 @@
     st.core.seek(ratio * st.duration);
     kick();
   }
+  let waveTouchInitialTime = null;
   canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
     dragging = true;
+    const st = trackState();
+    waveTouchInitialTime = (st.audio && Number.isFinite(st.audio.currentTime)) ? st.audio.currentTime : 0;
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
-    seekAt(e.clientX);
+    if (e.pointerType !== 'touch') {
+      seekAt(e.clientX);
+    }
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     e.preventDefault(); e.stopPropagation();
     seekAt(e.clientX);
   });
-  const endDrag = (e) => { dragging = false; try { e.stopPropagation(); } catch (_) {} };
+  const endDrag = (e) => {
+    if (dragging) {
+      if (e.type === 'pointerup') {
+        seekAt(e.clientX);
+      } else if (e.type === 'pointercancel' && waveTouchInitialTime !== null) {
+        // Rollback on pointercancel (system back swipe / palm touch)
+        const st = trackState();
+        if (st.core && typeof st.core.seek === 'function') st.core.seek(waveTouchInitialTime);
+        kick();
+      }
+    }
+    dragging = false;
+    waveTouchInitialTime = null;
+    try { e.stopPropagation(); } catch (_) {}
+  };
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
   canvas.addEventListener('click', (e) => e.stopPropagation());
@@ -2492,7 +2531,13 @@
     section.querySelector('#nd-random').addEventListener('click', () => { index++; render(); });
     const play = (i) => { if (tracks[i] && c && c.playTrack) c.playTrack(tracks[i], tracks, i); };
     section.querySelector('#nd-listen').addEventListener('click', () => play(0));
-    section.querySelectorAll('.nd-track').forEach((b) => b.addEventListener('click', () => play(Number(b.dataset.i))));
+    section.querySelectorAll('.nd-track').forEach((b) => {
+      if (typeof window.useSafeTap === 'function') {
+        window.useSafeTap(b, () => play(Number(b.dataset.i)));
+      } else {
+        b.addEventListener('click', () => play(Number(b.dataset.i)));
+      }
+    });
     section.querySelector('#nd-profile').addEventListener('click', () => {
       if (c && typeof c.openArtist === 'function') c.openArtist(pick.name, { id: pick.id || '' });
     });
@@ -2505,6 +2550,8 @@
     if (content) view.insertBefore(section, content); else view.appendChild(section);
     render();
     window.addEventListener('muriel:library', render);
+    window.addEventListener('noctra:hydrated', render);
+    window.addEventListener('muriel:ready', render);
     window.addEventListener('muriel:track', () => { if (!section.hidden) render(); });
   }
   /*
@@ -2900,16 +2947,31 @@
     curEl.textContent = fmt(a.currentTime);
     durEl.textContent = fmt(d);
   }
-  range.addEventListener('pointerdown', () => { seeking = true; lastSeekValue = NaN; });
-  range.addEventListener('input', () => {
+  let nptTouchInitial = null;
+  range.addEventListener('pointerdown', (e) => {
+    seeking = true;
+    lastSeekValue = NaN;
+    nptTouchInitial = Number(range.value);
+  });
+  range.addEventListener('input', (e) => {
     const a = core() && core().audio;
     const d = a && Number.isFinite(a.duration) ? a.duration : 0;
     range.style.setProperty('--p', (Number(range.value) / 10).toFixed(2) + '%');
     if (d) curEl.textContent = fmt((Number(range.value) / 1000) * d);
-    seekTo(range.value, false);
+    if (e.pointerType !== 'touch') {
+      seekTo(range.value, false);
+    }
   });
-  range.addEventListener('change', () => { seeking = false; seekTo(range.value, true); sync(); });
-  range.addEventListener('pointerup', () => { seeking = false; seekTo(range.value, true); sync(); });
+  range.addEventListener('change', () => { seeking = false; seekTo(range.value, true); nptTouchInitial = null; sync(); });
+  range.addEventListener('pointerup', () => { seeking = false; seekTo(range.value, true); nptTouchInitial = null; sync(); });
+  range.addEventListener('pointercancel', () => {
+    seeking = false;
+    if (nptTouchInitial !== null) {
+      range.value = String(nptTouchInitial);
+      sync();
+    }
+    nptTouchInitial = null;
+  });
   const a = (core() && core().audio) || document.querySelector('audio');
   if (a) ['timeupdate','seeked','loadedmetadata','durationchange','play'].forEach((ev) => a.addEventListener(ev, sync));
   setInterval(sync, 700);

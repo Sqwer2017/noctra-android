@@ -8782,7 +8782,17 @@ html.ui-rtl input::placeholder { direction: rtl; text-align: right; }
 #splash-logo { width: 22vmin; height: 22vmin; will-change: transform; }
 #splash-logo svg { width: 100%; height: 100%; overflow: visible; display: block; fill: var(--md-sys-color-primary, #D0BCFF); }
 @keyframes splashGiveUp { to { opacity: 0; visibility: hidden; pointer-events: none; } }
-body.perf #splash, html.is-mobile #splash { display: none !important; }
+body.perf #splash { display: none !important; }
+
+/* Protection against accidental touches & touch lists */
+.track-list, .tracks-list, #local-tracks-list, #favorites-track-list, #queue-track-list, #history-track-list, #playlist-detail-tracks, #album-tracks-list, #artist-tracks-list, .nd-tracks, .track-row, .track-item {
+  touch-action: pan-y;
+}
+
+button, .btn, .btn-icon, .btn-icon-pill, .btn-pill, .btn-pill-primary, .nav-item, .rail-icon-btn, .playback-controls, .scrubber-bar-wrapper, .volume-slider-wrapper, .playbar, .sidebar, input[type="range"], .m3-dropdown-trigger {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 /* hidden titlebar: slides down over the app when the pointer touches the top edge */
 #titlebar-reveal-zone { display: none; position: fixed; top: 0; left: 0; right: 0; height: 6px; z-index: 10001; -webkit-app-region: no-drag; }

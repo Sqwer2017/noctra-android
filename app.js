@@ -72,20 +72,25 @@
   });
 })();
 
-// Riff 43 splash: Noctra's star draws itself while the app starts (computers only; phones show their own launch
-// screen). styles.css also fades it out on its own after a few seconds, so a startup error can't leave it up.
+// Noctra splash: star draws itself on PC; on mobile, branded splash screen stays until initial storage hydration
 (function murielSplash() {
   const splash = document.getElementById('splash');
   const host = document.getElementById('splash-logo');
   if (!splash || !host) return;
+  const isMobile = document.documentElement.classList.contains('is-mobile');
   const perf = /^(1|true)$/.test(localStorage.getItem('muriel_perf_mode') || '');
   const reduced = localStorage.getItem('muriel_adv_reduce_motion') === 'true' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  if (document.documentElement.classList.contains('is-mobile') || perf || reduced) { splash.remove(); return; }
+  if (perf || (reduced && !isMobile)) { splash.remove(); return; }
   const finish = () => {
     if (!splash.isConnected || splash.classList.contains('hide')) return;
     splash.classList.add('hide');
-    setTimeout(() => splash.remove(), 480);
+    setTimeout(() => { try { splash.remove(); } catch (_) {} }, 480);
   };
+  window.dismissSplash = finish;
+  if (isMobile) {
+    // Keep branded splash screen visible until storage state is hydrated
+    return;
+  }
   const safety = setTimeout(finish, 1850);
   try {
     const paths = Array.from(host.querySelectorAll('path'));
@@ -601,8 +606,110 @@ document.addEventListener('DOMContentLoaded', async () => {
                           lastBroadcastStateKey: null,
                           syncTimeout: null,
                           scrubberDragTargetTime: undefined,
-                          riffFont: localStorage.getItem('muriel_font') || 'google'
+                          riffFont: localStorage.getItem('muriel_font') || 'google',
+                          isHydrated: false
   };
+
+  state.isHydrated = false;
+  window.isHydrated = false;
+
+  let _libLoaded = false;
+  let _queueRestored = false;
+
+  function markHydrated() {
+    if (state.isHydrated) return;
+    state.isHydrated = true;
+    window.isHydrated = true;
+    window.dispatchEvent(new CustomEvent('noctra:hydrated', { detail: { state } }));
+    if (typeof window.dismissSplash === 'function') {
+      window.dismissSplash();
+    } else {
+      const splash = document.getElementById('splash');
+      if (splash && splash.isConnected) {
+        splash.classList.add('hide');
+        setTimeout(() => { try { splash.remove(); } catch (_) {} }, 450);
+      }
+    }
+  }
+  window.markHydrated = markHydrated;
+  setTimeout(markHydrated, 2200);
+
+  // Global scroll tracker for safe touch handling
+  let lastGlobalScrollTime = 0;
+  window.addEventListener('scroll', () => { lastGlobalScrollTime = performance.now(); }, { passive: true, capture: true });
+
+  // useSafeTap hook: safe touch tapping with dead zone, scroll, and displacement protection
+  function useSafeTap(element, callback) {
+    if (!element || typeof callback !== 'function') return () => {};
+    let startX = 0;
+    let startY = 0;
+    let pointerId = null;
+    let validTouch = false;
+
+    function onPointerDown(e) {
+      if (e.pointerType !== 'touch') {
+        validTouch = false;
+        return;
+      }
+      // 1. Ignore presses in edge dead zones (< 14px or > innerWidth - 14px)
+      if (e.clientX < 14 || e.clientX > (window.innerWidth - 14)) {
+        validTouch = false;
+        return;
+      }
+      // 2. Ignore taps within 120ms after scroll
+      if (performance.now() - lastGlobalScrollTime < 120) {
+        validTouch = false;
+        return;
+      }
+      startX = e.clientX;
+      startY = e.clientY;
+      pointerId = e.pointerId;
+      validTouch = true;
+    }
+
+    function onPointerMove(e) {
+      if (!validTouch || e.pointerId !== pointerId) return;
+      if (Math.hypot(e.clientX - startX, e.clientY - startY) >= 10) {
+        validTouch = false;
+      }
+    }
+
+    function onPointerUp(e) {
+      if (e.pointerType !== 'touch') {
+        callback(e);
+        return;
+      }
+      if (!validTouch || e.pointerId !== pointerId) return;
+      if (performance.now() - lastGlobalScrollTime < 120) {
+        validTouch = false;
+        return;
+      }
+      if (Math.hypot(e.clientX - startX, e.clientY - startY) < 10) {
+        validTouch = false;
+        callback(e);
+      } else {
+        validTouch = false;
+      }
+    }
+
+    function onPointerCancel() {
+      validTouch = false;
+      pointerId = null;
+    }
+
+    element.addEventListener('pointerdown', onPointerDown, { passive: true });
+    element.addEventListener('pointermove', onPointerMove, { passive: true });
+    element.addEventListener('pointerup', onPointerUp);
+    element.addEventListener('pointercancel', onPointerCancel, { passive: true });
+
+    return function cleanup() {
+      element.removeEventListener('pointerdown', onPointerDown);
+      element.removeEventListener('pointermove', onPointerMove);
+      element.removeEventListener('pointerup', onPointerUp);
+      element.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }
+  window.useSafeTap = useSafeTap;
 
   function migrateAddedAt() {
     // the same song favourited from several places (album row, player bar, search) was kept once per source (#10)
@@ -6748,12 +6855,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Pointer events (not mouse events) so a finger drag scrubs too: on Android a touch drag never fires
   // mousemove, only the tap's synthesized mousedown/mouseup, so only tapping used to seek (#21).
   let scrubberPointerId = null;
+  let scrubberTouchInitialTime = null;
   if (el.scrubberTrack) {
     el.scrubberTrack.style.touchAction = 'none';
     el.scrubberTrack.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       isDraggingScrubber = true;
       scrubberPointerId = e.pointerId;
+      scrubberTouchInitialTime = (el.nativeAudio && Number.isFinite(el.nativeAudio.currentTime)) ? el.nativeAudio.currentTime : 0;
       try { el.scrubberTrack.setPointerCapture(e.pointerId); } catch (_) {}
       hasDrawnPausedFrame = false;
       if (!animationFrameId) startVisualizers();
@@ -6772,12 +6881,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     isDraggingScrubber = false;
     scrubberPointerId = null;
     if (el.scrubberTrack) el.scrubberTrack.classList.remove('dragging');
-    const targetTime = commit ? updateScrubberPositionFromEvent(e) : state.scrubberDragTargetTime;
+    const isTouch = e.pointerType === 'touch';
+    if (!commit) {
+      // Rollback to initial position on pointercancel (system back swipe / palm touch)
+      if (isTouch && scrubberTouchInitialTime !== null && el.nativeAudio) {
+        state.scrubberDragTargetTime = undefined;
+        if (el.timeCurrent) el.timeCurrent.textContent = formatDuration(scrubberTouchInitialTime);
+      }
+      scrubberTouchInitialTime = null;
+      state.scrubberDragTargetTime = undefined;
+      return;
+    }
+    const targetTime = updateScrubberPositionFromEvent(e);
     if (targetTime !== undefined && !isNaN(targetTime) && el.nativeAudio) {
       el.nativeAudio.currentTime = targetTime;
       updateMediaPositionState();
     }
     state.scrubberDragTargetTime = undefined;
+    scrubberTouchInitialTime = null;
   };
   window.addEventListener('pointerup', (e) => endScrub(e, true));
   window.addEventListener('pointercancel', (e) => endScrub(e, false));
@@ -7863,13 +7984,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (multiSel.tracks.has(canonicalId)) row.classList.add('selected');
         }
 
-        row.addEventListener('click', (e) => {
-          if (e.target.closest('.track-row-actions')) return;
+        let lastSafeTapHandled = 0;
+        const onActivateTrack = (e) => {
+          if (e.target && e.target.closest && e.target.closest('.track-row-actions')) return;
           if (multiSel.active && multiSel.context === context) {
             toggleTrackSelection(track, row);
             return;
           }
-          if (e.target.classList.contains('track-row-artist')) {
+          if (e.target && e.target.classList && e.target.classList.contains('track-row-artist')) {
             e.stopPropagation();
             openTrackArtist(track);
             return;
@@ -7899,6 +8021,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             clickIndex = indexIn(currentList);
           }
           playTrack(track, currentList, clickIndex >= 0 ? clickIndex : idx, context);
+        };
+
+        useSafeTap(row, (e) => {
+          lastSafeTapHandled = performance.now();
+          onActivateTrack(e);
+        });
+
+        row.addEventListener('click', (e) => {
+          if (performance.now() - lastSafeTapHandled < 450) return;
+          if (e.pointerType === 'touch' || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) return;
+          onActivateTrack(e);
         });
 
         // A finger tap gets moved onto the nearest element that listens for clicks, and only the buttons did,
@@ -10802,12 +10935,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   syncVolumeControls();
-  if (el.volumeSlider) {
-    el.volumeSlider.addEventListener('input', (e) => setVolumeFromSlider(e.currentTarget));
-  }
-  if (el.tvkVolumeSlider) {
-    el.tvkVolumeSlider.addEventListener('input', (e) => setVolumeFromSlider(e.currentTarget));
-  }
+  let touchInitialVolume = null;
+  [el.volumeSlider, el.tvkVolumeSlider].forEach(slider => {
+    if (!slider) return;
+    slider.addEventListener('pointerdown', (e) => {
+      touchInitialVolume = state.volume;
+    });
+    slider.addEventListener('input', (e) => {
+      if (e.pointerType === 'touch') {
+        // Touch: update visual preview during drag, commit on pointerup
+        return;
+      }
+      setVolumeFromSlider(e.currentTarget);
+    });
+    slider.addEventListener('pointerup', (e) => {
+      if (e.pointerType === 'touch') {
+        setVolumeFromSlider(slider);
+      }
+      touchInitialVolume = null;
+    });
+    slider.addEventListener('pointercancel', (e) => {
+      if (touchInitialVolume !== null) {
+        state.volume = touchInitialVolume;
+        syncVolumeControls();
+        persistVolumeState();
+        applyAudioSettings();
+      }
+      touchInitialVolume = null;
+    });
+  });
 
   if (el.btnVolumeMute) {
     el.btnVolumeMute.addEventListener('click', () => {
@@ -16392,7 +16548,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   fetch(`http://127.0.0.1:${state.serverPort}/api/library`).then(r => r.json()).then(data => {
     state.localTracks = data;
     updateLocalBadge();
-  }).catch(() => {});
+    _libLoaded = true;
+    if (_queueRestored) markHydrated();
+  }).catch(() => {
+    _libLoaded = true;
+    if (_queueRestored) markHydrated();
+  });
   renderPlaylistsList();
   renderPresets();
   syncSettingsSlidersToState();
@@ -20600,6 +20761,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ======================= end of Riff 43: player & look =======================
 
   restoreQueueState();
+  _queueRestored = true;
+  if (_libLoaded) markHydrated();
 
   emitPluginEvent('ready');
 
@@ -20724,6 +20887,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   };
   window.dispatchEvent(new Event('muriel:ready'));
+  markHydrated();
 });
 
 document.addEventListener('DOMContentLoaded', () => {

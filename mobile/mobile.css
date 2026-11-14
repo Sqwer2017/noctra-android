@@ -3,6 +3,11 @@
    Tapping the mini player opens the now-playing sheet (the desktop drawer, full screen) and the
    player bar expands into full transport controls at the bottom of that sheet. */
 
+html.is-mobile, html.is-mobile body {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
 html.is-mobile {
   --tabbar-h: 56px;
   --mini-h: 64px;
@@ -14,12 +19,20 @@ html.is-mobile {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
-html.is-mobile body { overscroll-behavior: none; touch-action: manipulation; }
+html.is-mobile body {
+  display: flex !important;
+  flex-direction: column !important;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  margin: 0 !important;
+  padding: 0 !important;
+}
 
 /* ---------- top bar ---------- */
 html.is-mobile .titlebar {
+  flex-shrink: 0 !important;
   height: auto !important;
-  padding: calc(var(--safe-top) + 8px) 16px 8px !important;
+  padding: calc(var(--safe-top) + 8px) 16px 4px !important;
   -webkit-app-region: no-drag;
 }
 html.is-mobile .titlebar-controls,
@@ -33,15 +46,17 @@ html.is-mobile .profile-menu { background: var(--md-sys-color-surface-container-
 html.is-mobile .profile-menu-item { min-height: 48px; }
 html.is-mobile .profile-swatch { width: 26px; height: 26px; }
 html.is-mobile .top-nav {
+  flex-shrink: 0 !important;
   position: static !important;
   transform: none !important;
   width: 100% !important;
   display: flex !important;
   gap: 8px !important;
-  margin: 8px 0 0 !important;
+  margin: 4px 0 8px !important;
   padding: 0 16px !important;
+  flex-wrap: nowrap !important;
+  height: auto !important;
 }
-html.is-mobile .top-nav { flex-wrap: nowrap !important; height: auto !important; }
 /* the desktop bar centres the search box absolutely; on tablets (no 600px media query) it floated over the hero */
 html.is-mobile .search-box-wrapper,
 html.is-mobile .top-nav.search-pos-middle .search-box-wrapper {
@@ -65,32 +80,62 @@ html.is-mobile .app-layout {
   gap: 0 !important;
   height: auto !important;
   max-height: none !important;
-  position: fixed !important;
-  /* the content runs to the bottom edge; the floating mini player sits on top */
-  inset: calc(var(--safe-top) + 108px) 0 0 0 !important;
+  position: relative !important;
+  inset: auto !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 html.is-mobile .main-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
   border-radius: 0 !important;
-  padding: 12px 16px 24px !important;
+  padding: 8px 16px 20px !important;
   background: transparent !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
   -webkit-overflow-scrolling: touch;
 }
-/* the album page scrolls by itself (styles.css); the floating mini player covers its bottom */
-html.is-mobile #view-album.active { padding-bottom: calc(var(--chrome-bottom) + 24px); }
+/* the album page scrolls by itself (styles.css) */
+html.is-mobile #view-album.active { padding-bottom: 24px; }
 
-/* ---------- tab bar (the rail) ---------- */
+/* ---------- fixed footer dock (MiniPlayer + BottomNavBar) ---------- */
+html.is-mobile .mobile-dock {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  position: relative !important;
+  z-index: 3200 !important;
+  padding-bottom: var(--safe-bottom) !important;
+  background: var(--md-sys-color-surface-container-solid, #1E1F22) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- tab bar (the rail / BottomNavBar) ---------- */
 html.is-mobile .sidebar {
-  position: fixed !important;
-  left: 0; right: 0; bottom: 0;
-  width: auto !important;
-  height: calc(var(--tabbar-h) + var(--safe-bottom)) !important;
-  padding: 0 4px var(--safe-bottom) !important;
+  position: relative !important;
+  left: auto; right: auto; bottom: auto;
+  width: 100% !important;
+  height: var(--tabbar-h) !important;
+  padding: 0 4px !important;
   border-radius: 0 !important;
   flex-direction: row !important;
   justify-content: space-around !important;
   align-items: center !important;
   gap: 0 !important;
   z-index: 3200 !important;
+  background: transparent !important;
+  transform: none !important;
+}
+html.is-mobile:not(.has-dock) .sidebar {
+  position: fixed !important;
+  left: 0; right: 0; bottom: 0;
+  height: calc(var(--tabbar-h) + var(--safe-bottom)) !important;
+  padding: 0 4px var(--safe-bottom) !important;
   background: var(--md-sys-color-surface-container-solid, #1E1F22) !important;
 }
 html.is-mobile .sidebar-nav { flex-direction: row !important; justify-content: space-around !important; width: auto !important; flex: 1 1 auto; gap: 0 !important; }
@@ -121,21 +166,28 @@ html.is-mobile .rail-drawer {
 
 /* ---------- mini player ---------- */
 html.is-mobile .playbar {
-  position: fixed !important;
-  left: 8px !important; right: 8px !important;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 6px) !important;
-  top: auto !important;
+  position: relative !important;
+  left: auto !important; right: auto !important;
+  bottom: auto !important; top: auto !important;
+  width: calc(100% - 16px) !important;
+  margin: 6px 8px 4px !important;
   height: var(--mini-h) !important;
   padding: 0 8px 0 8px !important;
-  border-radius: 24px !important;
-  /* phones draw no blur, so the bar floating over the list stays solid at any UI opacity */
-  background: var(--md-sys-color-surface-container-solid, #1E1F22) !important;
+  border-radius: 20px !important;
+  background: var(--md-sys-color-surface-container-highest-solid, #2A2B2F) !important;
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
-  z-index: 3100 !important;
-  width: auto !important;
+  z-index: 3210 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
   transition: none !important;
+}
+html.is-mobile:not(.has-dock) .playbar {
+  position: fixed !important;
+  left: 8px !important; right: 8px !important;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 6px) !important;
+  width: auto !important;
+  margin: 0 !important;
 }
 html.is-mobile .playbar-left { flex: 1 1 auto !important; min-width: 0 !important; gap: 10px !important; width: auto !important; }
 html.is-mobile .playbar-left .track-meta { max-width: none !important; flex: 1 1 auto !important; }
@@ -2459,4 +2511,69 @@ html.is-mobile [contenteditable="true"] {
    of the home block, so hiding the block alone left it above the results. */
 html.is-mobile #view-discover.is-searching #noctra-daily {
   display: none !important;
+}
+
+/* ---------- Mobile Branded Splash Screen ---------- */
+html.is-mobile #splash {
+  position: fixed !important;
+  inset: 0 !important;
+  background: var(--md-sys-color-surface, #0f1015) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.38s ease, visibility 0.38s ease !important;
+  pointer-events: auto !important;
+  animation: none !important;
+}
+html.is-mobile #splash.hide {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html.is-mobile #splash #splash-logo {
+  width: 96px !important;
+  height: 96px !important;
+}
+html.is-mobile #splash #splash-logo svg {
+  width: 100% !important;
+  height: 100% !important;
+  fill: var(--md-sys-color-primary, #D0BCFF) !important;
+}
+
+/* ---------- Touch lists and controls touch protection ---------- */
+html.is-mobile .track-list,
+html.is-mobile .tracks-list,
+html.is-mobile #local-tracks-list,
+html.is-mobile #favorites-track-list,
+html.is-mobile #queue-track-list,
+html.is-mobile #history-track-list,
+html.is-mobile #playlist-detail-tracks,
+html.is-mobile #album-tracks-list,
+html.is-mobile #artist-tracks-list,
+html.is-mobile .nd-tracks,
+html.is-mobile .track-row,
+html.is-mobile .track-item {
+  touch-action: pan-y !important;
+}
+
+html.is-mobile button,
+html.is-mobile .btn,
+html.is-mobile .btn-icon,
+html.is-mobile .btn-icon-pill,
+html.is-mobile .btn-pill,
+html.is-mobile .btn-pill-primary,
+html.is-mobile .nav-item,
+html.is-mobile .rail-icon-btn,
+html.is-mobile .playback-controls,
+html.is-mobile .scrubber-bar-wrapper,
+html.is-mobile .volume-slider-wrapper,
+html.is-mobile .playbar,
+html.is-mobile .sidebar,
+html.is-mobile input[type="range"],
+html.is-mobile .m3-dropdown-trigger {
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
